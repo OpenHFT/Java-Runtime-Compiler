@@ -1,0 +1,38 @@
+package eg;
+
+import eg.components.BarImpl;
+import eg.components.Foo;
+import eg.components.TeeImpl;
+
+public class FooBarTee2 {
+    public final String name;
+    public final TeeImpl tee;
+    public final BarImpl bar;
+    public final BarImpl copy;
+    public final Foo foo;
+
+    public FooBarTee2(String name) {
+        // when viewing this file, ensure it is synchronised with the copy on disk.
+        System.out.println("load java class from file.");
+        this.name = name;
+
+        tee = new TeeImpl("test");
+
+        bar = new BarImpl(tee, 55);
+
+        copy = new BarImpl(tee, 555);
+
+        // you should see the current date here after synchronisation.
+        foo = new Foo(bar, copy, "load java class from file.", 5);
+    }
+
+    public void start() {
+    }
+
+    public void stop() {
+    }
+
+    public void close() {
+        stop();
+    }
+}
