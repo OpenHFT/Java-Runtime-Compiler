@@ -17,6 +17,7 @@
 package net.openhft.compiler;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.tools.JavaFileObject;
 import java.io.File;
@@ -30,10 +31,12 @@ import static net.openhft.compiler.CompilerUtils.writeText;
 
 @SuppressWarnings("StaticNonFinalField")
 public class CachedCompiler {
+    @Nullable
     private final File sourceDir;
+    @Nullable
     private final File classDir;
 
-    public CachedCompiler(@NotNull File sourceDir, @NotNull File classDir) {
+    public CachedCompiler(@Nullable File sourceDir, @Nullable File classDir) {
         this.sourceDir = sourceDir;
         this.classDir = classDir;
     }
