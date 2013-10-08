@@ -137,9 +137,9 @@ public enum CompilerUtils {
      * @param className   expected to load.
      * @param bytes       of the byte code.
      */
-    public static void defineClass(@Nullable ClassLoader classLoader, @NotNull String className, @NotNull byte[] bytes) {
+    public static Class defineClass(@Nullable ClassLoader classLoader, @NotNull String className, @NotNull byte[] bytes) {
         try {
-            DEFINE_CLASS_METHOD.invoke(classLoader, className, bytes, 0, bytes.length);
+            return (Class) DEFINE_CLASS_METHOD.invoke(classLoader, className, bytes, 0, bytes.length);
         } catch (IllegalAccessException e) {
             throw new AssertionError(e);
         } catch (InvocationTargetException e) {

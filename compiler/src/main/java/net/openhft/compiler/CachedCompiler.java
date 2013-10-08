@@ -22,8 +22,7 @@ import org.jetbrains.annotations.Nullable;
 import javax.tools.JavaFileObject;
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 
 import static net.openhft.compiler.CompilerUtils.writeBytes;
@@ -31,10 +30,14 @@ import static net.openhft.compiler.CompilerUtils.writeText;
 
 @SuppressWarnings("StaticNonFinalField")
 public class CachedCompiler {
+    private static final Map<ClassLoader, Map<String, Class>> loadedClassesMap = new WeakHashMap<ClassLoader, Map<String, Class>>();
+
     @Nullable
     private final File sourceDir;
     @Nullable
     private final File classDir;
+
+    private final List<JavaFileObject> javaFileObjects = new ArrayList<JavaFileObject>();
 
     public CachedCompiler(@Nullable File sourceDir, @Nullable File classDir) {
         this.sourceDir = sourceDir;
@@ -62,7 +65,8 @@ public class CachedCompiler {
             writeText(file, javaCode);
             compilationUnits = CompilerUtils.s_standardJavaFileManager.getJavaFileObjects(file);
         } else {
-            compilationUnits = Collections.singletonList(new JavaSourceFromString(className, javaCode));
+            javaFileObjects.add(new JavaSourceFromString(className, javaCode));
+            compilationUnits = javaFileObjects;
         }
         // reuse the same file manager to allow caching of jar files
         CompilerUtils.s_compiler.getTask(null, CompilerUtils.s_fileManager, null, null, null, compilationUnits).call();
@@ -70,8 +74,23 @@ public class CachedCompiler {
     }
 
     public Class loadFromJava(@NotNull ClassLoader classLoader, @NotNull String className, @NotNull String javaCode) throws ClassNotFoundException {
+        Class clazz = null;
+        Map<String, Class> loadedClasses;
+        synchronized (loadedClassesMap) {
+            loadedClasses = loadedClassesMap.get(classLoader);
+            if (loadedClasses == null)
+                loadedClassesMap.put(classLoader, loadedClasses = new LinkedHashMap<String, Class>());
+            else
+                clazz = loadedClasses.get(className);
+        }
+        if (clazz != null)
+            return clazz;
         for (Map.Entry<String, byte[]> entry : compileFromJava(className, javaCode).entrySet()) {
             String className2 = entry.getKey();
+            synchronized (loadedClassesMap) {
+                if (loadedClasses.containsKey(className2))
+                    continue;
+            }
             byte[] bytes = entry.getValue();
             if (classDir != null) {
                 String filename = className2.replaceAll("\\.", '\\' + File.separator) + ".class";
@@ -79,9 +98,15 @@ public class CachedCompiler {
                 if (changed)
                     Logger.getLogger(CachedCompiler.class.getName()).info("Updated " + className2 + " in " + classDir);
             }
-            CompilerUtils.defineClass(classLoader, className2, bytes);
+            Class clazz2 = CompilerUtils.defineClass(classLoader, className2, bytes);
+            synchronized (loadedClassesMap) {
+                loadedClasses.put(className2, clazz2);
+            }
         }
-        CompilerUtils.s_fileManager.clearBuffers();
-        return classLoader.loadClass(className);
+//        CompilerUtils.s_fileManager.clearBuffers();
+        synchronized (loadedClassesMap) {
+            loadedClasses.put(className, clazz = classLoader.loadClass(className));
+        }
+        return clazz;
     }
 }
