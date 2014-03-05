@@ -39,7 +39,6 @@ public enum CompilerUtils {
     ;
     private static final Logger LOGGER = Logger.getLogger(CompilerUtils.class.getName());
     public static final boolean DEBUGGING = ManagementFactory.getRuntimeMXBean().getInputArguments().contains("-Xdebug");
-    @Nullable
     public static final CachedCompiler CACHED_COMPILER = new CachedCompiler(null, null);
     private static final Method DEFINE_CLASS_METHOD;
     private static final Charset UTF_8 = Charset.forName("UTF-8");
@@ -92,7 +91,7 @@ public enum CompilerUtils {
      * @return the outer class loaded.
      * @throws ClassNotFoundException the class name didn't match or failed to initialise.
      */
-    public static Class loadFromJava(@NotNull String className, @NotNull String javaCode) throws ClassNotFoundException {
+    private static Class loadFromJava(@NotNull String className, @NotNull String javaCode) throws ClassNotFoundException {
         return CACHED_COMPILER.loadFromJava(Thread.currentThread().getContextClassLoader(), className, javaCode);
     }
 
