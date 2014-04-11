@@ -33,7 +33,7 @@
     <packaging>bundle</packaging>
 
     <name>OpenHFT/Java-Runtime-Compiler</name>
-    <description>Java Runtime Compiler library</description>
+    <description>Java Runtime Compiler library.</description>
 
     <dependencyManagement>
         <dependencies>
