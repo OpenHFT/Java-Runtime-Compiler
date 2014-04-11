@@ -11,7 +11,7 @@ You can include in your project with
     <dependency>
         <groupId>net.openhft</groupId>
         <artifactId>compiler</artifactId>
-        <version>2.1</version>
+        <version>2.1.2</version>
     </dependency>
     
 ## Simple example
