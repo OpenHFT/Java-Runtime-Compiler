@@ -18,12 +18,16 @@ package net.openhft.compiler;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.LoggerFactory;
 
 import javax.tools.JavaFileObject;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
-import java.util.logging.Logger;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import static net.openhft.compiler.CompilerUtils.writeBytes;
 import static net.openhft.compiler.CompilerUtils.writeText;
@@ -95,8 +99,9 @@ public class CachedCompiler {
             if (classDir != null) {
                 String filename = className2.replaceAll("\\.", '\\' + File.separator) + ".class";
                 boolean changed = writeBytes(new File(classDir, filename), bytes);
-                if (changed)
-                    Logger.getLogger(CachedCompiler.class.getName()).info("Updated " + className2 + " in " + classDir);
+                if (changed) {
+                    LoggerFactory.getLogger(CachedCompiler.class).info("Updated {} in {}", className2, classDir);
+                }
             }
             Class clazz2 = CompilerUtils.defineClass(classLoader, className2, bytes);
             synchronized (loadedClassesMap) {

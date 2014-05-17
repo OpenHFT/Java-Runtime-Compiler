@@ -19,25 +19,37 @@ package net.openhft.compiler;
 import com.sun.tools.javac.api.JavacTool;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.Closeable;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.Arrays;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * This class support loading and debugging Java Classes dynamically.
  */
 public enum CompilerUtils {
     ;
-    private static final Logger LOGGER = Logger.getLogger(CompilerUtils.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(CompilerUtils.class);
     public static final boolean DEBUGGING = ManagementFactory.getRuntimeMXBean().getInputArguments().contains("-Xdebug");
     public static final CachedCompiler CACHED_COMPILER = new CachedCompiler(null, null);
     private static final Method DEFINE_CLASS_METHOD;
@@ -186,7 +198,7 @@ public enum CompilerUtils {
             dis.readFully(bytes);
         } catch (IOException e) {
             close(dis);
-            LOGGER.log(Level.WARNING, "Unable to read " + file, e);
+            LOGGER.warn("Unable to read {}", file, e);
             throw new IllegalStateException("Unable to read file " + file, e);
         }
 
@@ -198,8 +210,7 @@ public enum CompilerUtils {
             try {
                 closeable.close();
             } catch (IOException e) {
-                if (LOGGER.isLoggable(Level.FINE))
-                    LOGGER.log(Level.FINE, "Failed to close " + closeable, e);
+                LOGGER.trace("Failed to close {}", closeable, e);
             }
     }
 
@@ -236,7 +247,7 @@ public enum CompilerUtils {
             fos.write(bytes);
         } catch (IOException e) {
             close(fos);
-            LOGGER.log(Level.SEVERE, "Unable to write " + file + " as " + decodeUTF8(bytes), e);
+            LOGGER.warn("Unable to write {} as {}", file, decodeUTF8(bytes), e);
             file.delete();
             if (bak != null)
                 bak.renameTo(file);
