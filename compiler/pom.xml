@@ -15,7 +15,8 @@
   ~ limitations under the License.
   -->
 
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 
@@ -23,7 +24,7 @@
         <groupId>net.openhft</groupId>
         <artifactId>java-parent-pom</artifactId>
         <version>1.0.1</version>
-        <relativePath />
+        <relativePath/>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
@@ -94,7 +95,8 @@
                 <extensions>true</extensions>
                 <configuration>
                     <instructions>
-                        <Bundle-SymbolicName>${project.groupId}.${project.artifactId}</Bundle-SymbolicName>
+                        <Bundle-SymbolicName>${project.groupId}.${project.artifactId}
+                        </Bundle-SymbolicName>
                         <Bundle-Name>${project.artifactId}</Bundle-Name>
                     </instructions>
                 </configuration>
@@ -103,10 +105,22 @@
 
     </build>
 
+    <!-- todo remove once next parent pom is adopted -->
+    <repositories>
+        <repository>
+            <id>sonatype-nexus-staging</id>
+            <url>https://oss.sonatype.org/content/repositories/staging</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+        </repository>
+    </repositories>
+
     <scm>
         <url>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git</url>
         <connection>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git</connection>
-        <developerConnection>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git</developerConnection>
+        <developerConnection>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git
+        </developerConnection>
         <tag>master</tag>
     </scm>
 
