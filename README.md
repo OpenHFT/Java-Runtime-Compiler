@@ -22,7 +22,7 @@ You needa CachedCompiler and access to you JDK's tools.jar.
      
      // dynamically you can call
      Class aClass = cc.loadFromJava(className, javaCode);
-     KnownInterface o = (KnownInterface) aClass.nextInstance();
+     KnownInterface o = (KnownInterface) aClass.newInstance();
      
 I suggest making you class implement a "KnownInterface" as this will allow you to call/manipulate instances of you generated class.
 
