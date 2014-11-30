@@ -52,6 +52,5 @@ public class FooBarTee {
 
     public void close() {
         stop();
-
     }
 }
