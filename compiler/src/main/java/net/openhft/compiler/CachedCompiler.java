@@ -70,6 +70,7 @@ public class CachedCompiler {
             File file = new File(sourceDir, filename);
             writeText(file, javaCode);
             compilationUnits = CompilerUtils.s_standardJavaFileManager.getJavaFileObjects(file);
+
         } else {
             javaFileObjects.add(new JavaSourceFromString(className, javaCode));
             compilationUnits = javaFileObjects;

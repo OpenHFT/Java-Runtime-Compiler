@@ -38,6 +38,7 @@ public class CompilerTest extends TestCase {
         File parent2 = new File("essence-file");
         if (parent2.exists()) {
             parent = parent2;
+
         } else {
             parent = new File(".");
         }

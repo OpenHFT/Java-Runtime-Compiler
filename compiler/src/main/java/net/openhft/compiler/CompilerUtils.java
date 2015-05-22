@@ -126,6 +126,7 @@ public enum CompilerUtils {
             }
             if (!Arrays.asList(System.getProperty(JAVA_CLASS_PATH).split(File.pathSeparator)).contains(path))
                 System.setProperty(JAVA_CLASS_PATH, System.getProperty(JAVA_CLASS_PATH) + File.pathSeparator + path);
+
         } else {
             return false;
         }
