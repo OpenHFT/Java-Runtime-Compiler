@@ -11,9 +11,11 @@ You can include in your project with
     <dependency>
         <groupId>net.openhft</groupId>
         <artifactId>compiler</artifactId>
-        <version>2.1.2</version>
+        <version>2.2.0</version>
     </dependency>
     
+You can find the latest version here [maven search for net.openhft:compiler](http://search.maven.org/#browse%7C842970587)
+
 ## Simple example
 
 You needa CachedCompiler and access to you JDK's tools.jar.
