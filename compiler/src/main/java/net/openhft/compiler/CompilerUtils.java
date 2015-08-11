@@ -27,36 +27,29 @@ import org.slf4j.LoggerFactory;
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
-import java.io.ByteArrayInputStream;
-import java.io.Closeable;
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.StringWriter;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * This class support loading and debugging Java Classes dynamically.
  */
 public enum CompilerUtils {
     ;
-    private static final Logger LOGGER = LoggerFactory.getLogger(CompilerUtils.class);
-    public static final boolean DEBUGGING = ManagementFactory.getRuntimeMXBean().getInputArguments().contains("-Xdebug");
+    public static final boolean DEBUGGING = isDebug();
     public static final CachedCompiler CACHED_COMPILER = new CachedCompiler(null, null);
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CompilerUtils.class);
     private static final Method DEFINE_CLASS_METHOD;
     private static final Charset UTF_8 = Charset.forName("UTF-8");
     private static final String JAVA_CLASS_PATH = "java.class.path";
+    static JavaCompiler s_compiler;
+    static StandardJavaFileManager s_standardJavaFileManager;
+    static MyJavaFileManager s_fileManager;
 
     static {
         try {
@@ -67,9 +60,14 @@ public enum CompilerUtils {
         }
     }
 
-    static JavaCompiler s_compiler;
-    static StandardJavaFileManager s_standardJavaFileManager;
-    static MyJavaFileManager s_fileManager;
+    static {
+        reset();
+    }
+
+    private static boolean isDebug() {
+        String inputArguments = ManagementFactory.getRuntimeMXBean().getInputArguments().toString();
+        return inputArguments.contains("-Xdebug")|| inputArguments.contains("-agentlib:jdwp=");
+    }
 
     private static void reset() {
         s_compiler = ToolProvider.getSystemJavaCompiler();
@@ -78,10 +76,6 @@ public enum CompilerUtils {
 
         s_standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
         s_fileManager = new MyJavaFileManager(s_standardJavaFileManager);
-    }
-
-    static {
-        reset();
     }
 
     /**
