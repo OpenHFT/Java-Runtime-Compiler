@@ -22,7 +22,7 @@ You need a CachedCompiler and access to your JDK's tools.jar.
 
      // dynamically you can call
      String className = "mypackage.MyClass";
-     String javaCode = "import mypackage;\n" +
+     String javaCode = "package mypackage;\n" +
                       "public class MyClass implements Runnable {\n" +
                       "    public void run() {\n" +
                       "        System.out.println("\"Hello World\");\n" +
