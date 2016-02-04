@@ -111,7 +111,6 @@ public class CachedCompiler {
                 loadedClasses.put(className2, clazz2);
             }
         }
-//        CompilerUtils.s_fileManager.clearBuffers();
         synchronized (loadedClassesMap) {
             loadedClasses.put(className, clazz = classLoader.loadClass(className));
         }
