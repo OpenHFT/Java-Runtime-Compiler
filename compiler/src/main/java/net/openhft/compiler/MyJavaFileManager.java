@@ -39,17 +39,14 @@ class MyJavaFileManager implements JavaFileManager {
     }
 
     public ClassLoader getClassLoader(Location location) {
-        // System.out.println("getClassLoader(" + location + ')');
         return fileManager.getClassLoader(location);
     }
 
     public Iterable<JavaFileObject> list(Location location, String packageName, Set<Kind> kinds, boolean recurse) throws IOException {
-        // System.out.println("list(" + location + ',' + packageName + ',' + kinds + ',' + recurse + ')');
         return fileManager.list(location, packageName, kinds, recurse);
     }
 
     public String inferBinaryName(Location location, JavaFileObject file) {
-//        System.out.println("inferBinaryName(location=" + location + ", file=" + file + ')');
         return fileManager.inferBinaryName(location, file);
     }
 
@@ -62,12 +59,10 @@ class MyJavaFileManager implements JavaFileManager {
     }
 
     public boolean hasLocation(Location location) {
-        // System.out.println("hasLocation(" + location + ')');
         return fileManager.hasLocation(location);
     }
 
     public JavaFileObject getJavaFileForInput(Location location, String className, Kind kind) throws IOException {
-        // System.out.println("getJavaFileForInput(location=" + location + ", className=" + className + ", kind=" + kind + ')');
         if (location == StandardLocation.CLASS_OUTPUT && buffers.containsKey(className) && kind == Kind.CLASS) {
             final byte[] bytes = buffers.get(className).toByteArray();
             return new SimpleJavaFileObject(URI.create(className), kind) {
@@ -101,12 +96,10 @@ class MyJavaFileManager implements JavaFileManager {
     }
 
     public void flush() throws IOException {
-//            for (Map.Entry<String, ByteArrayOutputStream> entry : buffers.entrySet())
-//                System.out.println("Compiled " + entry.getKey() + ", size=" + entry.getValue().toByteArray().length);
+        // Do nothing
     }
 
     public void close() throws IOException {
-        // System.out.println("close()");
         fileManager.close();
     }
 
