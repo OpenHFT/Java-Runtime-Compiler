@@ -117,7 +117,7 @@
                         <Bundle-Name>OpenHFT :: ${project.artifactId}</Bundle-Name>
                         <Bundle-Version>${project.version}</Bundle-Version>
                         <Export-Package>
-                            net.openhft.compiler
+                            net.openhft.compiler.*;-noimport:=true
                         </Export-Package>
                     </instructions>
                 </configuration>
