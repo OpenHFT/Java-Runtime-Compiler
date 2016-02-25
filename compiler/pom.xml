@@ -55,11 +55,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.sun.java</groupId>
-            <artifactId>tools</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>com.intellij</groupId>
             <artifactId>annotations</artifactId>
         </dependency>

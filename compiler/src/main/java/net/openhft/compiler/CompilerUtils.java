@@ -18,7 +18,6 @@
 
 package net.openhft.compiler;
 
-import com.sun.tools.javac.api.JavacTool;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -33,7 +32,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * This class support loading and debugging Java Classes dynamically.
@@ -71,8 +69,15 @@ public enum CompilerUtils {
 
     private static void reset() {
         s_compiler = ToolProvider.getSystemJavaCompiler();
-        if (s_compiler == null)
-            s_compiler = JavacTool.create();
+        if (s_compiler == null) {
+            try {
+                Class<?> javacTool = Class.forName("com.sun.tools.javac.api.JavacTool");
+                Method create = javacTool.getMethod("create");
+                s_compiler = (JavaCompiler) create.invoke(null);
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
+        }
 
         s_standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
         s_fileManager = new MyJavaFileManager(s_standardJavaFileManager);
