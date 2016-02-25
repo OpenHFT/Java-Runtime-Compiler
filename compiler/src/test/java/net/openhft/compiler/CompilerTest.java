@@ -18,21 +18,22 @@
 
 package net.openhft.compiler;
 
-import com.sun.tools.internal.xjc.util.NullStream;
 import eg.FooBarTee;
 import eg.components.Foo;
 import junit.framework.TestCase;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Date;
 
 public class CompilerTest extends TestCase {
-    private static final String EG_FOO_BAR_TEE = "eg.FooBarTee";
     static final File parent;
+    private static final String EG_FOO_BAR_TEE = "eg.FooBarTee";
+    private static final int RUNS = 1000 * 1000;
 
     static {
         File parent2 = new File("essence-file");
@@ -105,14 +106,16 @@ public class CompilerTest extends TestCase {
         assertEquals(text, foo.s);
     }
 
-    private static final int RUNS = 1000 * 1000;
-
     public void test_fromFile() throws ClassNotFoundException, IOException, IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
         Class clazz = CompilerUtils.loadFromResource("eg.FooBarTee2", "eg/FooBarTee2.jcf");
         // turn off System.out
         PrintStream out = System.out;
         try {
-            System.setOut(new PrintStream(new NullStream()));
+            System.setOut(new PrintStream(new OutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                }
+            }));
             final Constructor stringConstructor = clazz.getConstructor(String.class);
             long start = 0;
             for (int i = -RUNS / 10; i < RUNS; i++) {
