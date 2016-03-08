@@ -26,9 +26,8 @@ import org.slf4j.LoggerFactory;
 import javax.tools.JavaFileObject;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -45,7 +44,8 @@ public class CachedCompiler {
     @Nullable
     private final File classDir;
 
-    private final List<JavaFileObject> javaFileObjects = new ArrayList<JavaFileObject>();
+    private final Map<String, JavaFileObject> javaFileObjects =
+            new HashMap<String, JavaFileObject>();
 
     public CachedCompiler(@Nullable File sourceDir, @Nullable File classDir) {
         this.sourceDir = sourceDir;
@@ -74,8 +74,8 @@ public class CachedCompiler {
             compilationUnits = CompilerUtils.s_standardJavaFileManager.getJavaFileObjects(file);
 
         } else {
-            javaFileObjects.add(new JavaSourceFromString(className, javaCode));
-            compilationUnits = javaFileObjects;
+            javaFileObjects.put(className, new JavaSourceFromString(className, javaCode));
+            compilationUnits = javaFileObjects.values();
         }
         // reuse the same file manager to allow caching of jar files
         CompilerUtils.s_compiler.getTask(null, CompilerUtils.s_fileManager, null, null, null, compilationUnits).call();
