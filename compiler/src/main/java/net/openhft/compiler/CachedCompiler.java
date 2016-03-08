@@ -20,6 +20,7 @@ package net.openhft.compiler;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.tools.JavaFileObject;
@@ -36,6 +37,7 @@ import static net.openhft.compiler.CompilerUtils.writeText;
 
 @SuppressWarnings("StaticNonFinalField")
 public class CachedCompiler {
+    private static final Logger LOG = LoggerFactory.getLogger(CachedCompiler.class);
     private static final Map<ClassLoader, Map<String, Class>> loadedClassesMap = new WeakHashMap<ClassLoader, Map<String, Class>>();
 
     @Nullable
@@ -103,7 +105,7 @@ public class CachedCompiler {
                 String filename = className2.replaceAll("\\.", '\\' + File.separator) + ".class";
                 boolean changed = writeBytes(new File(classDir, filename), bytes);
                 if (changed) {
-                    LoggerFactory.getLogger(CachedCompiler.class).info("Updated {} in {}", className2, classDir);
+                    LOG.info("Updated {} in {}", className2, classDir);
                 }
             }
             Class clazz2 = CompilerUtils.defineClass(classLoader, className2, bytes);
