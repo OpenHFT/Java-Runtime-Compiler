@@ -23,6 +23,8 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.tools.Diagnostic;
+import javax.tools.DiagnosticListener;
 import javax.tools.JavaFileObject;
 import java.io.File;
 import java.io.IOException;
@@ -64,6 +66,8 @@ public class CachedCompiler {
         return loadFromJava(getClass().getClassLoader(), className, javaCode);
     }
 
+    private boolean errors;
+
     @NotNull
     Map<String, byte[]> compileFromJava(@NotNull String className, @NotNull String javaCode) {
         Iterable<? extends JavaFileObject> compilationUnits;
@@ -78,8 +82,22 @@ public class CachedCompiler {
             compilationUnits = javaFileObjects.values();
         }
         // reuse the same file manager to allow caching of jar files
-        CompilerUtils.s_compiler.getTask(null, CompilerUtils.s_fileManager, null, null, null, compilationUnits).call();
-        return CompilerUtils.s_fileManager.getAllBuffers();
+        CompilerUtils.s_compiler.getTask(null, CompilerUtils.s_fileManager, new DiagnosticListener<JavaFileObject>() {
+            @Override
+            public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
+                if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
+                    errors = true;
+                    System.err.println(diagnostic);
+                }
+            }
+        }, null, null, compilationUnits).call();
+        Map<String, byte[]> result = CompilerUtils.s_fileManager.getAllBuffers();
+        if (errors) {
+            // compilation error, so we want to exclude this file from future compilation passes
+            if (sourceDir == null)
+                javaFileObjects.remove(className);
+        }
+        return result;
     }
 
     public Class loadFromJava(@NotNull ClassLoader classLoader, @NotNull String className, @NotNull String javaCode) throws ClassNotFoundException {
