@@ -1,5 +1,6 @@
 Java-Runtime-Compiler
 =====================
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler/badge.svg)](https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler)
 
 This takes a String, compiles it and loads it returning you a class from what you built.  
 By default it uses the current ClassLoader.  It supports nested classes, but otherwise builds one class at a time.
@@ -11,10 +12,8 @@ You can include in your project with
     <dependency>
         <groupId>net.openhft</groupId>
         <artifactId>compiler</artifactId>
-        <version>2.2.1</version>
+        <version><!-- The latest version (see above) --></version>
     </dependency>
-    
-You can find the latest version here [maven search for net.openhft:compiler](http://search.maven.org/#browse%7C842970587)
 
 ## Simple example
 
