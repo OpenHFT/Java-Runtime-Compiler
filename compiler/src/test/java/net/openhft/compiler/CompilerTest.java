@@ -26,9 +26,14 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CompilerTest extends TestCase {
     static final File parent;
@@ -132,4 +137,122 @@ public class CompilerTest extends TestCase {
             System.setOut(out);
         }
     }
+
+    public void test_settingPrintStreamWithCompilerErrors() throws Exception {
+        final AtomicBoolean usedSysOut = new AtomicBoolean(false);
+        final AtomicBoolean usedSysErr = new AtomicBoolean(false);
+
+        final PrintStream out = System.out;
+        final PrintStream err = System.err;
+        final StringWriter writer = new StringWriter();
+
+        try {
+            System.setOut(new PrintStream(new OutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                    usedSysOut.set(true);
+                }
+            }));
+            System.setErr(new PrintStream(new OutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                    usedSysErr.set(true);
+                }
+            }));
+
+            CompilerUtils.CACHED_COMPILER.loadFromJava(
+                    getClass().getClassLoader(), "TestClass", "clazz TestClass {}",
+                    new PrintWriter(writer));
+            fail("Should have failed to compile");
+        } catch (ClassNotFoundException e) {
+            // expected
+        } finally {
+            System.setOut(out);
+            System.setErr(err);
+        }
+
+        assertFalse(usedSysOut.get());
+        assertFalse(usedSysErr.get());
+
+        List<String> expectedInErrorFromCompiler = Arrays.asList(
+                "TestClass.java:1: error", "clazz TestClass {}");
+
+        for (String expectedError : expectedInErrorFromCompiler) {
+            String errorMessage = String.format("Does not contain expected '%s' in:\n%s", expectedError, writer.toString());
+            assertTrue(errorMessage, writer.toString().contains(expectedError));
+        }
+    }
+
+    public void test_settingPrintStreamWithNoErrors() throws Exception {
+        final AtomicBoolean usedSysOut = new AtomicBoolean(false);
+        final AtomicBoolean usedSysErr = new AtomicBoolean(false);
+
+        final PrintStream out = System.out;
+        final PrintStream err = System.err;
+        final StringWriter writer = new StringWriter();
+
+        try {
+            System.setOut(new PrintStream(new OutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                    usedSysOut.set(true);
+                }
+            }));
+            System.setErr(new PrintStream(new OutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                    usedSysErr.set(true);
+                }
+            }));
+
+            CompilerUtils.CACHED_COMPILER.loadFromJava(
+                    getClass().getClassLoader(), "TestClass", "class TestClass {}",
+                    new PrintWriter(writer));
+        } finally {
+            System.setOut(out);
+            System.setErr(err);
+        }
+
+        assertFalse(usedSysOut.get());
+        assertFalse(usedSysErr.get());
+        assertEquals("", writer.toString());
+    }
+
+    public void test_settingPrintStreamWithWarnings() throws Exception {
+        final AtomicBoolean usedSysOut = new AtomicBoolean(false);
+        final AtomicBoolean usedSysErr = new AtomicBoolean(false);
+
+        final PrintStream out = System.out;
+        final PrintStream err = System.err;
+        final StringWriter writer = new StringWriter();
+
+        try {
+            System.setOut(new PrintStream(new OutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                    usedSysOut.set(true);
+                }
+            }));
+            System.setErr(new PrintStream(new OutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                    usedSysErr.set(true);
+                }
+            }));
+
+            CompilerUtils.CACHED_COMPILER.loadFromJava(
+                    getClass().getClassLoader(), "TestClass",
+                    // definition with a mandatory warning
+                    "class TestClass { int i = new Date().getDay(); }",
+                    new PrintWriter(writer));
+        } finally {
+            System.setOut(out);
+            System.setErr(err);
+        }
+
+        assertFalse(usedSysOut.get());
+        assertFalse(usedSysErr.get());
+        assertEquals("", writer.toString());
+    }
+
 }
