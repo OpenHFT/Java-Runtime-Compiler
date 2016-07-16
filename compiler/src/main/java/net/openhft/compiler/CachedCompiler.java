@@ -28,6 +28,7 @@ import javax.tools.DiagnosticListener;
 import javax.tools.JavaFileObject;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -40,6 +41,7 @@ import static net.openhft.compiler.CompilerUtils.writeText;
 public class CachedCompiler {
     private static final Logger LOG = LoggerFactory.getLogger(CachedCompiler.class);
     private static final Map<ClassLoader, Map<String, Class>> loadedClassesMap = new WeakHashMap<ClassLoader, Map<String, Class>>();
+    private static final PrintWriter DEFAULT_WRITER = new PrintWriter(System.err);
 
     @Nullable
     private final File sourceDir;
@@ -63,13 +65,26 @@ public class CachedCompiler {
     }
 
     public Class loadFromJava(@NotNull String className, @NotNull String javaCode) throws ClassNotFoundException {
-        return loadFromJava(getClass().getClassLoader(), className, javaCode);
+        return loadFromJava(getClass().getClassLoader(), className, javaCode, DEFAULT_WRITER);
+    }
+
+    public Class loadFromJava(@NotNull ClassLoader classLoader,
+                              @NotNull String className,
+                              @NotNull String javaCode) throws ClassNotFoundException {
+        return loadFromJava(classLoader, className, javaCode, DEFAULT_WRITER);
     }
 
     private boolean errors;
 
     @NotNull
     Map<String, byte[]> compileFromJava(@NotNull String className, @NotNull String javaCode) {
+        return compileFromJava(className, javaCode, DEFAULT_WRITER);
+    }
+
+    @NotNull
+    Map<String, byte[]> compileFromJava(@NotNull String className,
+                                        @NotNull String javaCode,
+                                        final @NotNull PrintWriter writer) {
         Iterable<? extends JavaFileObject> compilationUnits;
         if (sourceDir != null) {
             String filename = className.replaceAll("\\.", '\\' + File.separator) + ".java";
@@ -82,12 +97,12 @@ public class CachedCompiler {
             compilationUnits = javaFileObjects.values();
         }
         // reuse the same file manager to allow caching of jar files
-        CompilerUtils.s_compiler.getTask(null, CompilerUtils.s_fileManager, new DiagnosticListener<JavaFileObject>() {
+        CompilerUtils.s_compiler.getTask(writer, CompilerUtils.s_fileManager, new DiagnosticListener<JavaFileObject>() {
             @Override
             public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
                 if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
                     errors = true;
-                    System.err.println(diagnostic);
+                    writer.println(diagnostic);
                 }
             }
         }, null, null, compilationUnits).call();
@@ -100,7 +115,10 @@ public class CachedCompiler {
         return result;
     }
 
-    public Class loadFromJava(@NotNull ClassLoader classLoader, @NotNull String className, @NotNull String javaCode) throws ClassNotFoundException {
+    public Class loadFromJava(@NotNull ClassLoader classLoader,
+                              @NotNull String className,
+                              @NotNull String javaCode,
+                              @Nullable PrintWriter writer) throws ClassNotFoundException {
         Class clazz = null;
         Map<String, Class> loadedClasses;
         synchronized (loadedClassesMap) {
@@ -110,9 +128,10 @@ public class CachedCompiler {
             else
                 clazz = loadedClasses.get(className);
         }
+        PrintWriter printWriter = (writer == null ? DEFAULT_WRITER : writer);
         if (clazz != null)
             return clazz;
-        for (Map.Entry<String, byte[]> entry : compileFromJava(className, javaCode).entrySet()) {
+        for (Map.Entry<String, byte[]> entry : compileFromJava(className, javaCode, printWriter).entrySet()) {
             String className2 = entry.getKey();
             synchronized (loadedClassesMap) {
                 if (loadedClasses.containsKey(className2))
