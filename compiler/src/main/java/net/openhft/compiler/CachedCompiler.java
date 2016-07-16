@@ -29,6 +29,7 @@ import javax.tools.JavaFileObject;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -74,8 +75,6 @@ public class CachedCompiler {
         return loadFromJava(classLoader, className, javaCode, DEFAULT_WRITER);
     }
 
-    private boolean errors;
-
     @NotNull
     Map<String, byte[]> compileFromJava(@NotNull String className, @NotNull String javaCode) {
         return compileFromJava(className, javaCode, DEFAULT_WRITER);
@@ -97,20 +96,22 @@ public class CachedCompiler {
             compilationUnits = javaFileObjects.values();
         }
         // reuse the same file manager to allow caching of jar files
-        CompilerUtils.s_compiler.getTask(writer, CompilerUtils.s_fileManager, new DiagnosticListener<JavaFileObject>() {
+        boolean ok = CompilerUtils.s_compiler.getTask(writer, CompilerUtils.s_fileManager, new DiagnosticListener<JavaFileObject>() {
             @Override
             public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
                 if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
-                    errors = true;
                     writer.println(diagnostic);
                 }
             }
         }, null, null, compilationUnits).call();
         Map<String, byte[]> result = CompilerUtils.s_fileManager.getAllBuffers();
-        if (errors) {
+        if (!ok) {
             // compilation error, so we want to exclude this file from future compilation passes
             if (sourceDir == null)
                 javaFileObjects.remove(className);
+
+            // nothing to return due to compiler error
+            return Collections.emptyMap();
         }
         return result;
     }
