@@ -22,12 +22,7 @@ import eg.FooBarTee;
 import eg.components.Foo;
 import junit.framework.TestCase;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
@@ -285,6 +280,5 @@ public class CompilerTest extends TestCase {
         assertEquals("S", testClass.getName());
         assertEquals("ok", callable.call());
     }
-
 
 }
