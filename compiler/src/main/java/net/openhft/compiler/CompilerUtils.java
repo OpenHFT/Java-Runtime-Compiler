@@ -36,8 +36,8 @@ import java.util.Arrays;
 /**
  * This class support loading and debugging Java Classes dynamically.
  */
-public enum CompilerUtils {
-    ;
+public class CompilerUtils {
+
     public static final boolean DEBUGGING = isDebug();
     public static final CachedCompiler CACHED_COMPILER = new CachedCompiler(null, null);
 
