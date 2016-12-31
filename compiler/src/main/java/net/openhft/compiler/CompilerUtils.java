@@ -47,7 +47,6 @@ public enum CompilerUtils {
     private static final String JAVA_CLASS_PATH = "java.class.path";
     static JavaCompiler s_compiler;
     static StandardJavaFileManager s_standardJavaFileManager;
-    static MyJavaFileManager s_fileManager;
 
     static {
         try {
@@ -78,9 +77,6 @@ public enum CompilerUtils {
                 throw new AssertionError(e);
             }
         }
-
-        s_standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
-        s_fileManager = new MyJavaFileManager(s_standardJavaFileManager);
     }
 
     /**

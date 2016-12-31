@@ -21,6 +21,7 @@ package net.openhft.compiler;
 import eg.FooBarTee;
 import eg.components.Foo;
 import junit.framework.TestCase;
+import org.junit.Test;
 
 import java.io.*;
 import java.lang.reflect.Constructor;
@@ -107,7 +108,9 @@ public class CompilerTest extends TestCase {
         assertEquals(text, foo.s);
     }
 
-    public void test_fromFile() throws ClassNotFoundException, IOException, IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
+    public void test_fromFile()
+            throws ClassNotFoundException, IOException, IllegalAccessException, InstantiationException,
+            NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
         Class clazz = CompilerUtils.loadFromResource("eg.FooBarTee2", "eg/FooBarTee2.jcf");
         // turn off System.out
         PrintStream out = System.out;
@@ -281,4 +284,17 @@ public class CompilerTest extends TestCase {
         assertEquals("ok", callable.call());
     }
 
+    @Test
+    public void testNewCompiler() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+        for (int i = 1; i <= 3; i++) {
+            ClassLoader classLoader = new ClassLoader() {
+            };
+            CachedCompiler cc = new CachedCompiler(null, null);
+            Class a = cc.loadFromJava(classLoader, "A", "public class A { static int i = " + i + "; }");
+            Class b = cc.loadFromJava(classLoader, "B", "public class B implements net.openhft.compiler.MyIntSupplier { public int get() { return A.i; } }");
+            MyIntSupplier bi = (MyIntSupplier) b.newInstance();
+            assertEquals(i, bi.get());
+        }
+    }
 }
+
