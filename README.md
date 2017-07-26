@@ -24,7 +24,7 @@ You need a CachedCompiler and access to your JDK's tools.jar.
      String javaCode = "package mypackage;\n" +
                       "public class MyClass implements Runnable {\n" +
                       "    public void run() {\n" +
-                      "        System.out.println("\"Hello World\");\n" +
+                      "        System.out.println(\"Hello World\");\n" +
                       "    }\n" +
                       "}\n";
      Class aClass = CompilerUtils.CACHED_COMPILER.loadFromJava(className, javaCode);
