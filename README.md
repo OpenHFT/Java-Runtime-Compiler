@@ -39,7 +39,7 @@ you have compiler redefine a class and code already compiled to use the class wi
 
 ## Using the CachedCompiler.
 
-In this example, you can configure the compiler to write the files to a speicifc directory when you are in debug mode.
+In this example, you can configure the compiler to write the files to a specific directory when you are in debug mode.
        
     private static final CachedCompiler JCC = CompilerUtils.DEBUGGING ?
                                                        new CachedCompiler(new File(parent, "src/test/java"), new File(parent, "target/compiled")) :
