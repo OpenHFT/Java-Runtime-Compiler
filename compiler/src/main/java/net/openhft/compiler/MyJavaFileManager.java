@@ -20,9 +20,20 @@ package net.openhft.compiler;
 
 import org.jetbrains.annotations.NotNull;
 
-import javax.tools.*;
+import javax.tools.FileObject;
+import javax.tools.JavaFileManager;
+import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
-import java.io.*;
+import javax.tools.SimpleJavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.StandardLocation;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -36,6 +47,14 @@ class MyJavaFileManager implements JavaFileManager {
 
     MyJavaFileManager(StandardJavaFileManager fileManager) {
         this.fileManager = fileManager;
+    }
+
+    public Iterable<Set<Location>> listLocationsForModules(final Location location) throws IOException {
+        return invokeNamedMethodIfAvailable(location, "listLocationsForModules");
+    }
+
+    public String inferModuleName(final Location location) throws IOException {
+        return invokeNamedMethodIfAvailable(location, "inferModuleName");
     }
 
     public ClassLoader getClassLoader(Location location) {
@@ -118,5 +137,23 @@ class MyJavaFileManager implements JavaFileManager {
             ret.put(entry.getKey(), entry.getValue().toByteArray());
         }
         return ret;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T invokeNamedMethodIfAvailable(final Location location, final String name) {
+        final Method[] methods = fileManager.getClass().getDeclaredMethods();
+        for (Method method : methods) {
+            if (method.getName().equals(name) && method.getParameterTypes().length == 1 &&
+                    method.getParameterTypes()[0] == Location.class) {
+                try {
+                    return (T) method.invoke(fileManager, location);
+                } catch (IllegalAccessException e) {
+                    throw new UnsupportedOperationException("Unable to invoke method " + name);
+                } catch (InvocationTargetException e) {
+                    throw new UnsupportedOperationException("Unable to invoke method " + name);
+                }
+            }
+        }
+        throw new UnsupportedOperationException("Unable to find method " + name);
     }
 }
