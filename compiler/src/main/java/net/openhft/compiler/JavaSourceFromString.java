@@ -24,7 +24,7 @@ import javax.tools.SimpleJavaFileObject;
 import java.net.URI;
 
 /* A file object used to represent source coming from a string.
-         */
+ */
 class JavaSourceFromString extends SimpleJavaFileObject {
     /**
      * The source code of this "file".

@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
-import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -63,7 +62,7 @@ public enum CompilerUtils {
 
     private static boolean isDebug() {
         String inputArguments = ManagementFactory.getRuntimeMXBean().getInputArguments().toString();
-        return inputArguments.contains("-Xdebug")|| inputArguments.contains("-agentlib:jdwp=");
+        return inputArguments.contains("-Xdebug") || inputArguments.contains("-agentlib:jdwp=");
     }
 
     private static void reset() {

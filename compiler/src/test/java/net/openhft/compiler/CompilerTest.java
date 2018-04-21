@@ -23,7 +23,6 @@ import eg.components.Foo;
 import junit.framework.TestCase;
 import org.junit.Test;
 
-import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;

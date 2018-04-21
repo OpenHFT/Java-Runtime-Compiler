@@ -204,8 +204,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 
-
-
 APACHE HTTP SERVER SUBCOMPONENTS:
 
 The Apache HTTP Server includes a number of subcomponents with
@@ -253,7 +251,6 @@ For the mod_mime_magic component:
  *
  */
 
-
 For the  modules\mappers\mod_imagemap.c component:
 
   "macmartinized" polygon code copyright 1992 by Eric Haines, erich@eye.com
@@ -283,7 +280,6 @@ For the  server\util_md5.c component:
  *  Content-MD5 Code contributed by Martin Hamilton (martin@net.lut.ac.uk)
  *
  */
-
 
 /* these portions extracted from mpack, John G. Myers - jgm+@cmu.edu */
 /* (C) Copyright 1993,1994 by Carnegie Mellon University
@@ -457,7 +453,6 @@ For the srclib\apr-util\include\apr_md4.h component:
  * documentation and/or software.
  */
 
-
 For the srclib\apr-util\test\testmd4.c component:
 
  *
@@ -547,7 +542,6 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
 CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 
 ====================================================================
 ----

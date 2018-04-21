@@ -21,7 +21,7 @@ import eg.components.BarImpl;
 import eg.components.Foo;
 import eg.components.TeeImpl;
 
-public class FooBarTee{
+public class FooBarTee {
     public final String name;
     public final TeeImpl tee;
     public final BarImpl bar;
