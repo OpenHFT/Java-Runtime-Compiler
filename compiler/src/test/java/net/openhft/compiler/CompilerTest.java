@@ -23,6 +23,7 @@ import eg.components.Foo;
 import junit.framework.TestCase;
 import org.junit.Test;
 
+import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
@@ -197,7 +198,7 @@ public class CompilerTest extends TestCase {
         try {
             System.setOut(new PrintStream(new OutputStream() {
                 @Override
-                public void write(int b) throws IOException {
+                public void write(int b) {
                     usedSysOut.set(true);
                 }
             }));
