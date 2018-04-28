@@ -9,27 +9,31 @@ By default it uses the current ClassLoader.  It supports nested classes, but oth
 
 You can include in your project with
 
-    <dependency>
-        <groupId>net.openhft</groupId>
-        <artifactId>compiler</artifactId>
-        <version><!-- The latest version (see above) --></version>
-    </dependency>
+```xml
+<dependency>
+    <groupId>net.openhft</groupId>
+    <artifactId>compiler</artifactId>
+    <version><!-- The latest version (see above) --></version>
+</dependency>
+```
 
 ## Simple example
 
 You need a CachedCompiler and access to your JDK's tools.jar.
 
-     // dynamically you can call
-     String className = "mypackage.MyClass";
-     String javaCode = "package mypackage;\n" +
-                      "public class MyClass implements Runnable {\n" +
-                      "    public void run() {\n" +
-                      "        System.out.println(\"Hello World\");\n" +
-                      "    }\n" +
-                      "}\n";
-     Class aClass = CompilerUtils.CACHED_COMPILER.loadFromJava(className, javaCode);
-     Runnable runner = (Runnable) aClass.newInstance();
-     runner.run();
+```java
+// dynamically you can call
+String className = "mypackage.MyClass";
+String javaCode = "package mypackage;\n" +
+                 "public class MyClass implements Runnable {\n" +
+                 "    public void run() {\n" +
+                 "        System.out.println(\"Hello World\");\n" +
+                 "    }\n" +
+                 "}\n";
+Class aClass = CompilerUtils.CACHED_COMPILER.loadFromJava(className, javaCode);
+Runnable runner = (Runnable) aClass.newInstance();
+runner.run();
+````
      
 I suggest making you class implement a KnownInterface of your choice as this will allow you to call/manipulate instances of you generated class.
 
@@ -41,9 +45,11 @@ you have compiler redefine a class and code already compiled to use the class wi
 
 In this example, you can configure the compiler to write the files to a specific directory when you are in debug mode.
        
-    private static final CachedCompiler JCC = CompilerUtils.DEBUGGING ?
-                                                       new CachedCompiler(new File(parent, "src/test/java"), new File(parent, "target/compiled")) :
-                                                       CompilerUtils.CACHED_COMPILER;
+```java
+private static final CachedCompiler JCC = CompilerUtils.DEBUGGING ?
+                                                   new CachedCompiler(new File(parent, "src/test/java"), new File(parent, "target/compiled")) :
+                                                   CompilerUtils.CACHED_COMPILER;
+```
      
 By selecting the src directory to match where your IDE looks for those files, it will allow your debugger to set into code you have generated at runtime.
 
