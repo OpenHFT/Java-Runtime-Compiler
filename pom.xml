@@ -38,4 +38,12 @@
         <module>compiler</module>
     </modules>
 
+    <scm>
+        <url>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git</url>
+        <connection>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git</connection>
+        <developerConnection>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git
+        </developerConnection>
+        <tag>master</tag>
+    </scm>
+
 </project>
