@@ -19,10 +19,13 @@
 package net.openhft.compiler;
 
 import org.jetbrains.annotations.NotNull;
+import sun.misc.Unsafe;
 
 import javax.tools.*;
 import javax.tools.JavaFileObject.Kind;
 import java.io.*;
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -31,20 +34,34 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
-@SuppressWarnings("RefusedBequest")
 class MyJavaFileManager implements JavaFileManager {
+    private final static Unsafe unsafe;
+    private static final long OVERRIDE_OFFSET;
+
+    static {
+        try {
+            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafe.setAccessible(true);
+            unsafe = (Unsafe) theUnsafe.get(null);
+            Field f = AccessibleObject.class.getDeclaredField("override");
+            OVERRIDE_OFFSET = unsafe.objectFieldOffset(f);
+        } catch (Exception ex) {
+            throw new AssertionError(ex);
+        }
+    }
+
     private final StandardJavaFileManager fileManager;
-    private final Map<String, ByteArrayOutputStream> buffers = new LinkedHashMap<String, ByteArrayOutputStream>();
+    private final Map<String, ByteArrayOutputStream> buffers = new LinkedHashMap<>();
 
     MyJavaFileManager(StandardJavaFileManager fileManager) {
         this.fileManager = fileManager;
     }
 
-    public Iterable<Set<Location>> listLocationsForModules(final Location location) throws IOException {
+    public Iterable<Set<Location>> listLocationsForModules(final Location location) {
         return invokeNamedMethodIfAvailable(location, "listLocationsForModules");
     }
 
-    public String inferModuleName(final Location location) throws IOException {
+    public String inferModuleName(final Location location) {
         return invokeNamedMethodIfAvailable(location, "inferModuleName");
     }
 
@@ -86,7 +103,7 @@ class MyJavaFileManager implements JavaFileManager {
     }
 
     @NotNull
-    public JavaFileObject getJavaFileForOutput(Location location, final String className, Kind kind, FileObject sibling) throws IOException {
+    public JavaFileObject getJavaFileForOutput(Location location, final String className, Kind kind, FileObject sibling) {
         return new SimpleJavaFileObject(URI.create(className), kind) {
             @NotNull
             public OutputStream openOutputStream() {
@@ -105,7 +122,7 @@ class MyJavaFileManager implements JavaFileManager {
         return fileManager.getFileForOutput(location, packageName, relativeName, sibling);
     }
 
-    public void flush() throws IOException {
+    public void flush() {
         // Do nothing
     }
 
@@ -123,7 +140,7 @@ class MyJavaFileManager implements JavaFileManager {
 
     @NotNull
     public Map<String, byte[]> getAllBuffers() {
-        Map<String, byte[]> ret = new LinkedHashMap<String, byte[]>(buffers.size() * 2);
+        Map<String, byte[]> ret = new LinkedHashMap<>(buffers.size() * 2);
         for (Map.Entry<String, ByteArrayOutputStream> entry : buffers.entrySet()) {
             ret.put(entry.getKey(), entry.getValue().toByteArray());
         }
@@ -137,10 +154,9 @@ class MyJavaFileManager implements JavaFileManager {
             if (method.getName().equals(name) && method.getParameterTypes().length == 1 &&
                     method.getParameterTypes()[0] == Location.class) {
                 try {
+                    unsafe.putBoolean(method, OVERRIDE_OFFSET, true);
                     return (T) method.invoke(fileManager, location);
-                } catch (IllegalAccessException e) {
-                    throw new UnsupportedOperationException("Unable to invoke method " + name);
-                } catch (InvocationTargetException e) {
+                } catch (IllegalAccessException | InvocationTargetException e) {
                     throw new UnsupportedOperationException("Unable to invoke method " + name);
                 }
             }
