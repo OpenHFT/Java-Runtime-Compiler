@@ -29,10 +29,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 class MyJavaFileManager implements JavaFileManager {
     private final static Unsafe unsafe;
@@ -51,7 +48,9 @@ class MyJavaFileManager implements JavaFileManager {
     }
 
     private final StandardJavaFileManager fileManager;
-    private final Map<String, ByteArrayOutputStream> buffers = new LinkedHashMap<>();
+
+    // synchronizing due to ConcurrentModificationException
+    private final Map<String, ByteArrayOutputStream> buffers = Collections.synchronizedMap(new LinkedHashMap<>());
 
     MyJavaFileManager(StandardJavaFileManager fileManager) {
         this.fileManager = fileManager;
@@ -90,14 +89,23 @@ class MyJavaFileManager implements JavaFileManager {
     }
 
     public JavaFileObject getJavaFileForInput(Location location, String className, Kind kind) throws IOException {
-        if (location == StandardLocation.CLASS_OUTPUT && buffers.containsKey(className) && kind == Kind.CLASS) {
-            final byte[] bytes = buffers.get(className).toByteArray();
-            return new SimpleJavaFileObject(URI.create(className), kind) {
-                @NotNull
-                public InputStream openInputStream() {
-                    return new ByteArrayInputStream(bytes);
-                }
-            };
+
+        if (location == StandardLocation.CLASS_OUTPUT) {
+            boolean success = false;
+            final byte[] bytes;
+            synchronized (buffers) {
+                success = buffers.containsKey(className) && kind == Kind.CLASS;
+                bytes = buffers.get(className).toByteArray();
+            }
+            if (success) {
+
+                return new SimpleJavaFileObject(URI.create(className), kind) {
+                    @NotNull
+                    public InputStream openInputStream() {
+                        return new ByteArrayInputStream(bytes);
+                    }
+                };
+            }
         }
         return fileManager.getJavaFileForInput(location, className, kind);
     }
@@ -140,11 +148,13 @@ class MyJavaFileManager implements JavaFileManager {
 
     @NotNull
     public Map<String, byte[]> getAllBuffers() {
-        Map<String, byte[]> ret = new LinkedHashMap<>(buffers.size() * 2);
-        for (Map.Entry<String, ByteArrayOutputStream> entry : buffers.entrySet()) {
-            ret.put(entry.getKey(), entry.getValue().toByteArray());
+        synchronized (buffers) {
+            Map<String, byte[]> ret = new LinkedHashMap<>(buffers.size() * 2);
+            for (Map.Entry<String, ByteArrayOutputStream> entry : buffers.entrySet()) {
+                ret.put(entry.getKey(), entry.getValue().toByteArray());
+            }
+            return ret;
         }
-        return ret;
     }
 
     @SuppressWarnings("unchecked")
