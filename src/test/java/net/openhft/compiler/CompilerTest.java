@@ -301,5 +301,9 @@ public class CompilerTest extends TestCase {
             assertEquals(i, bi.get());
         }
     }
+
+    public static void main(String[] args) throws ClassNotFoundException {
+        new CompilerTest().test_compiler();
+    }
 }
 
