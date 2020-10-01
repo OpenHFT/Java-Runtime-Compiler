@@ -2,8 +2,8 @@ Java-Runtime-Compiler
 =====================
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler/badge.svg)](https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler)
 
-This takes a String, compiles it and loads it returning you a class from what you built.  
-By default it uses the current ClassLoader.  It supports nested classes, but otherwise builds one class at a time.
+This takes a String, compiles it and loads it to returning you a class from what you built.  
+By default it uses the current ClassLoader. It supports nested classes, but otherwise build one class at a time.
 
 ## On maven central
 
@@ -19,7 +19,7 @@ You can include in your project with
 
 ## Simple example
 
-You need a CachedCompiler and access to your JDK's tools.jar.
+You need a Cached Compiler and access to your JDK's tools.jar.
 
 ```java
 // dynamically you can call
