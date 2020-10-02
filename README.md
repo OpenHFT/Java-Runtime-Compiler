@@ -35,7 +35,7 @@ Runnable runner = (Runnable) aClass.newInstance();
 runner.run();
 ````
      
-I suggest making your class implement a Known Interface of your choice as this will allow you to call/manipulate instances of you generated class.
+I suggest making your class implement a KnownInterface of your choice as this will allow you to call/manipulate instances of you generated class.
 
 Another more hacky way is to use this to override a class, provided it hasn't been loaded already.  
 This means you can redefine an existing class and provide the methods and fields used match,
