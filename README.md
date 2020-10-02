@@ -35,10 +35,10 @@ Runnable runner = (Runnable) aClass.newInstance();
 runner.run();
 ````
      
-I suggest making you class implement a KnownInterface of your choice as this will allow you to call/manipulate instances of you generated class.
+I suggest making your class implement a KnownInterface of your choice as this will allow you to call/manipulate instances of you generated class.
 
 Another more hacky way is to use this to override a class, provided it hasn't been loaded already.  
-This means you can redefine an existing class and provided the methods and fields used match,
+This means you can redefine an existing class and provide the methods and fields used match,
 you have compiler redefine a class and code already compiled to use the class will still work.
 
 ## Using the CachedCompiler.
@@ -51,6 +51,6 @@ private static final CachedCompiler JCC = CompilerUtils.DEBUGGING ?
                                                    CompilerUtils.CACHED_COMPILER;
 ```
      
-By selecting the src directory to match where your IDE looks for those files, it will allow your debugger to set into code you have generated at runtime.
+By selecting the src directory to match where your IDE looks for those files, it will allow your debugger to set into the code you have generated at runtime.
 
 Note: you may need to delete these files if you want to regenerate them.
