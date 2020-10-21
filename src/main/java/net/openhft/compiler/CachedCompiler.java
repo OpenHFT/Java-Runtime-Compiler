@@ -91,6 +91,8 @@ public class CachedCompiler implements Closeable {
             String filename = className.replaceAll("\\.", '\\' + File.separator) + ".java";
             File file = new File(sourceDir, filename);
             writeText(file, javaCode);
+            if (s_standardJavaFileManager == null)
+                s_standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
             compilationUnits = s_standardJavaFileManager.getJavaFileObjects(file);
 
         } else {
@@ -98,6 +100,7 @@ public class CachedCompiler implements Closeable {
             compilationUnits = javaFileObjects.values();
         }
         // reuse the same file manager to allow caching of jar files
+        List<String> options = Arrays.asList("-g", "-nowarn");
         boolean ok = s_compiler.getTask(writer, fileManager, new DiagnosticListener<JavaFileObject>() {
             @Override
             public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
@@ -105,7 +108,7 @@ public class CachedCompiler implements Closeable {
                     writer.println(diagnostic);
                 }
             }
-        }, null, null, compilationUnits).call();
+        }, options, null, compilationUnits).call();
         Map<String, byte[]> result = fileManager.getAllBuffers();
         if (!ok) {
             // compilation error, so we want to exclude this file from future compilation passes
