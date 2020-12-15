@@ -19,6 +19,8 @@
 package net.openhft.compiler;
 
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import sun.misc.Unsafe;
 
 import javax.tools.*;
@@ -30,8 +32,12 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 class MyJavaFileManager implements JavaFileManager {
+    private static final Logger LOG = LoggerFactory.getLogger(MyJavaFileManager.class);
     private final static Unsafe unsafe;
     private static final long OVERRIDE_OFFSET;
 
@@ -50,7 +56,7 @@ class MyJavaFileManager implements JavaFileManager {
     private final StandardJavaFileManager fileManager;
 
     // synchronizing due to ConcurrentModificationException
-    private final Map<String, ByteArrayOutputStream> buffers = Collections.synchronizedMap(new LinkedHashMap<>());
+    private final Map<String, CloseableByteArrayOutputStream> buffers = Collections.synchronizedMap(new LinkedHashMap<>());
 
     MyJavaFileManager(StandardJavaFileManager fileManager) {
         this.fileManager = fileManager;
@@ -115,8 +121,13 @@ class MyJavaFileManager implements JavaFileManager {
         return new SimpleJavaFileObject(URI.create(className), kind) {
             @NotNull
             public OutputStream openOutputStream() {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                buffers.put(className, baos);
+                // CloseableByteArrayOutputStream.closed is used to filter partial results from getAllBuffers()
+                CloseableByteArrayOutputStream baos = new CloseableByteArrayOutputStream();
+
+                // Reads from getAllBuffers() should be repeatable:
+                // let's ignore compile result in case compilation of this class was triggered before
+                buffers.putIfAbsent(className, baos);
+
                 return baos;
             }
         };
@@ -148,13 +159,35 @@ class MyJavaFileManager implements JavaFileManager {
 
     @NotNull
     public Map<String, byte[]> getAllBuffers() {
+        Map<String, byte[]> ret = new LinkedHashMap<>(buffers.size() * 2);
+        Map<String, CloseableByteArrayOutputStream> compiledClasses = new LinkedHashMap<>(ret.size());
+
         synchronized (buffers) {
-            Map<String, byte[]> ret = new LinkedHashMap<>(buffers.size() * 2);
-            for (Map.Entry<String, ByteArrayOutputStream> entry : buffers.entrySet()) {
-                ret.put(entry.getKey(), entry.getValue().toByteArray());
-            }
-            return ret;
+            compiledClasses.putAll(buffers);
         }
+
+        for (Map.Entry<String, CloseableByteArrayOutputStream> e : compiledClasses.entrySet()) {
+            try {
+                // Await for compilation in case class is still being compiled in previous compiler run.
+                e.getValue().closeFuture().get(30, TimeUnit.SECONDS);
+            } catch (InterruptedException t) {
+                Thread.currentThread().interrupt();
+
+                LOG.warn("Interrupted while waiting for compilation result [class=" + e.getKey() + "]");
+
+                break;
+            } catch (ExecutionException | TimeoutException t) {
+                LOG.warn("Failed to wait for compilation result [class=" + e.getKey() + "]", t);
+
+                continue;
+            }
+
+            final byte[] value = e.getValue().toByteArray();
+
+            ret.put(e.getKey(), value);
+        }
+
+        return ret;
     }
 
     @SuppressWarnings("unchecked")

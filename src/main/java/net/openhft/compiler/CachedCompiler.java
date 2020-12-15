@@ -32,6 +32,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import static net.openhft.compiler.CompilerUtils.*;
 
@@ -48,8 +50,7 @@ public class CachedCompiler implements Closeable {
     @Nullable
     private final File classDir;
 
-    private final Map<String, JavaFileObject> javaFileObjects =
-            new HashMap<String, JavaFileObject>();
+    private final ConcurrentMap<String, JavaFileObject> javaFileObjects = new ConcurrentHashMap<>();
 
     public CachedCompiler(@Nullable File sourceDir, @Nullable File classDir) {
         this.sourceDir = sourceDir;
@@ -97,7 +98,7 @@ public class CachedCompiler implements Closeable {
 
         } else {
             javaFileObjects.put(className, new JavaSourceFromString(className, javaCode));
-            compilationUnits = javaFileObjects.values();
+            compilationUnits = new ArrayList<>(javaFileObjects.values()); // To prevent CME from compiler code
         }
         // reuse the same file manager to allow caching of jar files
         List<String> options = Arrays.asList("-g", "-nowarn");
@@ -109,7 +110,7 @@ public class CachedCompiler implements Closeable {
                 }
             }
         }, options, null, compilationUnits).call();
-        Map<String, byte[]> result = fileManager.getAllBuffers();
+
         if (!ok) {
             // compilation error, so we want to exclude this file from future compilation passes
             if (sourceDir == null)
@@ -118,7 +119,11 @@ public class CachedCompiler implements Closeable {
             // nothing to return due to compiler error
             return Collections.emptyMap();
         }
-        return result;
+        else {
+            Map<String, byte[]> result = fileManager.getAllBuffers();
+
+            return result;
+        }
     }
 
     public Class loadFromJava(@NotNull ClassLoader classLoader,
@@ -143,7 +148,8 @@ public class CachedCompiler implements Closeable {
             StandardJavaFileManager standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
             fileManagerMap.put(classLoader, fileManager = new MyJavaFileManager(standardJavaFileManager));
         }
-        for (Map.Entry<String, byte[]> entry : compileFromJava(className, javaCode, printWriter, fileManager).entrySet()) {
+        final Map<String, byte[]> compiled = compileFromJava(className, javaCode, printWriter, fileManager);
+        for (Map.Entry<String, byte[]> entry : compiled.entrySet()) {
             String className2 = entry.getKey();
             synchronized (loadedClassesMap) {
                 if (loadedClasses.containsKey(className2))
@@ -157,9 +163,17 @@ public class CachedCompiler implements Closeable {
                     LOG.info("Updated {} in {}", className2, classDir);
                 }
             }
-            Class clazz2 = CompilerUtils.defineClass(classLoader, className2, bytes);
-            synchronized (loadedClassesMap) {
-                loadedClasses.put(className2, clazz2);
+
+            synchronized (className2.intern()) { // To prevent duplicate class definition error
+                synchronized (loadedClassesMap) {
+                    if (loadedClasses.containsKey(className2))
+                        continue;
+                }
+
+                Class<?> clazz2 = CompilerUtils.defineClass(classLoader, className2, bytes);
+                synchronized (loadedClassesMap) {
+                    loadedClasses.put(className2, clazz2);
+                }
             }
         }
         synchronized (loadedClassesMap) {
