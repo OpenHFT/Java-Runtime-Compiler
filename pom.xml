@@ -172,7 +172,7 @@
         <connection>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git</connection>
         <developerConnection>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git
         </developerConnection>
-        <tag>master</tag>
+         <tag>ea</tag>
     </scm>
 
 </project>
