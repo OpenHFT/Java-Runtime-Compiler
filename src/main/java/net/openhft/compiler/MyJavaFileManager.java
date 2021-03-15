@@ -25,7 +25,10 @@ import sun.misc.Unsafe;
 
 import javax.tools.*;
 import javax.tools.JavaFileObject.Kind;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -42,15 +45,21 @@ class MyJavaFileManager implements JavaFileManager {
     private static final long OVERRIDE_OFFSET;
 
     static {
+        long offset = 0;
         try {
             Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
             theUnsafe.setAccessible(true);
             unsafe = (Unsafe) theUnsafe.get(null);
-            Field f = AccessibleObject.class.getDeclaredField("override");
-            OVERRIDE_OFFSET = unsafe.objectFieldOffset(f);
         } catch (Exception ex) {
             throw new AssertionError(ex);
         }
+        try {
+            Field f = AccessibleObject.class.getDeclaredField("override");
+            offset = unsafe.objectFieldOffset(f);
+        } catch (NoSuchFieldException e) {
+            offset = 0;
+        }
+        OVERRIDE_OFFSET = offset;
     }
 
     private final StandardJavaFileManager fileManager;
@@ -197,7 +206,10 @@ class MyJavaFileManager implements JavaFileManager {
             if (method.getName().equals(name) && method.getParameterTypes().length == 1 &&
                     method.getParameterTypes()[0] == Location.class) {
                 try {
-                    unsafe.putBoolean(method, OVERRIDE_OFFSET, true);
+                    if (OVERRIDE_OFFSET == 0)
+                        method.setAccessible(true);
+                    else
+                        unsafe.putBoolean(method, OVERRIDE_OFFSET, true);
                     return (T) method.invoke(fileManager, location);
                 } catch (IllegalAccessException | InvocationTargetException e) {
                     throw new UnsupportedOperationException("Unable to invoke method " + name);
