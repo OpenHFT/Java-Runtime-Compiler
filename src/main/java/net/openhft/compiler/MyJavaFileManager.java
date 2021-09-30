@@ -45,7 +45,7 @@ class MyJavaFileManager implements JavaFileManager {
     private static final long OVERRIDE_OFFSET;
 
     static {
-        long offset = 0;
+        long offset;
         try {
             Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
             theUnsafe.setAccessible(true);
@@ -83,7 +83,7 @@ class MyJavaFileManager implements JavaFileManager {
         return fileManager.getClassLoader(location);
     }
 
-    public Iterable<JavaFileObject> list(Location location, String packageName, Set<Kind> kinds, boolean recurse) throws IOException {
+    public synchronized Iterable<JavaFileObject> list(Location location, String packageName, Set<Kind> kinds, boolean recurse) throws IOException {
         return fileManager.list(location, packageName, kinds, recurse);
     }
 
@@ -106,7 +106,7 @@ class MyJavaFileManager implements JavaFileManager {
     public JavaFileObject getJavaFileForInput(Location location, String className, Kind kind) throws IOException {
 
         if (location == StandardLocation.CLASS_OUTPUT) {
-            boolean success = false;
+            boolean success;
             final byte[] bytes;
             synchronized (buffers) {
                 success = buffers.containsKey(className) && kind == Kind.CLASS;
@@ -212,7 +212,7 @@ class MyJavaFileManager implements JavaFileManager {
                         unsafe.putBoolean(method, OVERRIDE_OFFSET, true);
                     return (T) method.invoke(fileManager, location);
                 } catch (IllegalAccessException | InvocationTargetException e) {
-                    throw new UnsupportedOperationException("Unable to invoke method " + name);
+                    throw new UnsupportedOperationException("Unable to invoke method " + name, e);
                 }
             }
         }
