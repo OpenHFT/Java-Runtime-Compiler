@@ -47,7 +47,7 @@ public class CompilerTest extends TestCase {
         }
     }
 
-    public void test_compiler() throws ClassNotFoundException {
+    public void test_compiler() {
         try {
             // CompilerUtils.setDebug(true);
             // added so the test passes in Maven.
@@ -283,6 +283,7 @@ public class CompilerTest extends TestCase {
                         "import java.util.concurrent.Callable; " +
                                 "public class OtherClass implements Callable<String> {" +
                                 "public String call() { return S.s; }}")
+                        .getDeclaredConstructor()
                         .newInstance();
 
         assertEquals("S", testClass.getName());
@@ -290,19 +291,19 @@ public class CompilerTest extends TestCase {
     }
 
     @Test
-    public void testNewCompiler() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    public void testNewCompiler() throws Exception {
         for (int i = 1; i <= 3; i++) {
             ClassLoader classLoader = new ClassLoader() {
             };
             CachedCompiler cc = new CachedCompiler(null, null);
             Class a = cc.loadFromJava(classLoader, "A", "public class A { static int i = " + i + "; }");
             Class b = cc.loadFromJava(classLoader, "B", "public class B implements net.openhft.compiler.MyIntSupplier { public int get() { return A.i; } }");
-            MyIntSupplier bi = (MyIntSupplier) b.newInstance();
+            MyIntSupplier bi = (MyIntSupplier) b.getDeclaredConstructor().newInstance();
             assertEquals(i, bi.get());
         }
     }
 
-    public static void main(String[] args) throws ClassNotFoundException {
+    public static void main(String[] args) {
         new CompilerTest().test_compiler();
     }
 }
