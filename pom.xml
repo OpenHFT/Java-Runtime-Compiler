@@ -15,19 +15,18 @@
   ~ limitations under the License.
   -->
 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
         <groupId>net.openhft</groupId>
         <artifactId>java-parent-pom</artifactId>
         <version>1.1.28</version>
-        <relativePath/>
+        <relativePath />
     </parent>
 
     <artifactId>compiler</artifactId>
-    <version>2.21ea80-SNAPSHOT</version>
+    <version>2.21ea80</version>
     <packaging>bundle</packaging>
 
     <name>OpenHFT/Java-Runtime-Compiler</name>
@@ -108,7 +107,7 @@
                     <executable>java</executable>
                     <arguments>
                         <argument>-classpath</argument>
-                        <classpath/>
+                        <classpath />
                         <argument>net.openhft.compiler.CompilerTest</argument>
                     </arguments>
                 </configuration>
@@ -224,7 +223,7 @@
         <connection>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git</connection>
         <developerConnection>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git
         </developerConnection>
-        <tag>ea</tag>
+        <tag>compiler-2.21ea80</tag>
     </scm>
 
 </project>
