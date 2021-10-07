@@ -47,62 +47,61 @@ public class CompilerTest extends TestCase {
         }
     }
 
-    public void test_compiler() {
-        try {
-            // CompilerUtils.setDebug(true);
-            // added so the test passes in Maven.
-            CompilerUtils.addClassPath("target/test-classes");
+    public static void main(String[] args) throws Throwable {
+        new CompilerTest().test_compiler();
+    }
+
+    public void test_compiler() throws Throwable {
+        // CompilerUtils.setDebug(true);
+        // added so the test passes in Maven.
+        CompilerUtils.addClassPath("target/test-classes");
 //        ClassLoader loader = CompilerTest.class.getClassLoader();
 //        URLClassLoader urlClassLoader = new URLClassLoader(((URLClassLoader)loader).getURLs(), null);
 //        Class fooBarTee1 = urlClassLoader.loadClass("eg.FooBarTee");
 
-            // this writes the file to disk only when debugging is enabled.
-            CachedCompiler cc = CompilerUtils.DEBUGGING ?
-                    new CachedCompiler(new File(parent, "src/test/java"), new File(parent, "target/compiled")) :
-                    CompilerUtils.CACHED_COMPILER;
+        // this writes the file to disk only when debugging is enabled.
+        CachedCompiler cc = CompilerUtils.DEBUGGING ?
+                new CachedCompiler(new File(parent, "src/test/java"), new File(parent, "target/compiled")) :
+                CompilerUtils.CACHED_COMPILER;
 
-            String text = "generated test " + new Date();
-            cc.loadFromJava(EG_FOO_BAR_TEE + 2, "package eg;\n" +
-                    '\n' +
-                    "import eg.components.BarImpl;\n" +
-                    "import eg.components.TeeImpl;\n" +
-                    "import eg.components.Foo;\n" +
-                    '\n' +
-                    "public class FooBarTee2 extends FooBarTee {\n" +
-                    '\n' +
-                    "    public FooBarTee2(String name) {\n" +
-                    "        super(name);\n" +
-                    "        // when viewing this file, ensure it is synchronised with the copy on disk.\n" +
-                    "        System.out.println(\"" + text + "\");\n" +
-                    '\n' +
-                    "        // you should see the current date here after synchronisation.\n" +
-                    "        foo = new Foo(bar, copy, \"" + text + "\", 5);\n" +
-                    "    }\n" +
-                    '\n' +
-                    "    public void start() {\n" +
-                    "    }\n" +
-                    '\n' +
-                    "    public void stop() {\n" +
-                    "    }\n" +
-                    '\n' +
-                    "    public void close() {\n" +
-                    "        stop();\n" +
-                    '\n' +
-                    "    }\n" +
-                    "}\n");
+        String text = "generated test " + new Date();
+        cc.loadFromJava(EG_FOO_BAR_TEE + 2, "package eg;\n" +
+                '\n' +
+                "import eg.components.BarImpl;\n" +
+                "import eg.components.TeeImpl;\n" +
+                "import eg.components.Foo;\n" +
+                '\n' +
+                "public class FooBarTee2 extends FooBarTee {\n" +
+                '\n' +
+                "    public FooBarTee2(String name) {\n" +
+                "        super(name);\n" +
+                "        // when viewing this file, ensure it is synchronised with the copy on disk.\n" +
+                "        System.out.println(\"" + text + "\");\n" +
+                '\n' +
+                "        // you should see the current date here after synchronisation.\n" +
+                "        foo = new Foo(bar, copy, \"" + text + "\", 5);\n" +
+                "    }\n" +
+                '\n' +
+                "    public void start() {\n" +
+                "    }\n" +
+                '\n' +
+                "    public void stop() {\n" +
+                "    }\n" +
+                '\n' +
+                "    public void close() {\n" +
+                "        stop();\n" +
+                '\n' +
+                "    }\n" +
+                "}\n");
 
-            // add a debug break point here and step into this method.
-            FooBarTee fooBarTee = (FooBarTee) Class
-                    .forName("eg.FooBarTee2")
-                    .getConstructor(String.class)
-                    .newInstance("test foo bar tee");
-            Foo foo = fooBarTee.foo;
-            assertNotNull(foo);
-            assertEquals(text, foo.s);
-        } catch (Throwable t) {
-            t.printStackTrace(System.out);
-            fail(t.getMessage());
-        }
+        // add a debug break point here and step into this method.
+        FooBarTee fooBarTee = (FooBarTee) Class
+                .forName("eg.FooBarTee2")
+                .getConstructor(String.class)
+                .newInstance("test foo bar tee");
+        Foo foo = fooBarTee.foo;
+        assertNotNull(foo);
+        assertEquals(text, foo.s);
     }
 
     public void test_fromFile()
@@ -271,10 +270,10 @@ public class CompilerTest extends TestCase {
 
         Callable callable = (Callable)
                 CompilerUtils.CACHED_COMPILER.loadFromJava(
-                        getClass().getClassLoader(), "OtherClass",
-                        "import java.util.concurrent.Callable; " +
-                                "public class OtherClass implements Callable<String> {" +
-                                "public String call() { return S.s; }}")
+                                getClass().getClassLoader(), "OtherClass",
+                                "import java.util.concurrent.Callable; " +
+                                        "public class OtherClass implements Callable<String> {" +
+                                        "public String call() { return S.s; }}")
                         .getDeclaredConstructor()
                         .newInstance();
 
@@ -293,10 +292,6 @@ public class CompilerTest extends TestCase {
             MyIntSupplier bi = (MyIntSupplier) b.getDeclaredConstructor().newInstance();
             assertEquals(i, bi.get());
         }
-    }
-
-    public static void main(String[] args) {
-        new CompilerTest().test_compiler();
     }
 }
 
