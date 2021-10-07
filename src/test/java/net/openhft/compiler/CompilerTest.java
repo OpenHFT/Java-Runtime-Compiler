@@ -62,29 +62,18 @@ public class CompilerTest extends TestCase {
                     CompilerUtils.CACHED_COMPILER;
 
             String text = "generated test " + new Date();
-            cc.loadFromJava(EG_FOO_BAR_TEE, "package eg;\n" +
+            cc.loadFromJava(EG_FOO_BAR_TEE + 2, "package eg;\n" +
                     '\n' +
                     "import eg.components.BarImpl;\n" +
                     "import eg.components.TeeImpl;\n" +
                     "import eg.components.Foo;\n" +
                     '\n' +
-                    "public class FooBarTee{\n" +
-                    "    public final String name;\n" +
-                    "    public final TeeImpl tee;\n" +
-                    "    public final BarImpl bar;\n" +
-                    "    public final BarImpl copy;\n" +
-                    "    public final Foo foo;\n" +
+                    "public class FooBarTee2 extends FooBarTee {\n" +
                     '\n' +
-                    "    public FooBarTee(String name) {\n" +
+                    "    public FooBarTee2(String name) {\n" +
+                    "        super(name);\n" +
                     "        // when viewing this file, ensure it is synchronised with the copy on disk.\n" +
                     "        System.out.println(\"" + text + "\");\n" +
-                    "        this.name = name;\n" +
-                    '\n' +
-                    "        tee = new TeeImpl(\"test\");\n" +
-                    '\n' +
-                    "        bar = new BarImpl(tee, 55);\n" +
-                    '\n' +
-                    "        copy = new BarImpl(tee, 555);\n" +
                     '\n' +
                     "        // you should see the current date here after synchronisation.\n" +
                     "        foo = new Foo(bar, copy, \"" + text + "\", 5);\n" +
@@ -103,7 +92,10 @@ public class CompilerTest extends TestCase {
                     "}\n");
 
             // add a debug break point here and step into this method.
-            FooBarTee fooBarTee = new FooBarTee("test foo bar tee");
+            FooBarTee fooBarTee = (FooBarTee) Class
+                    .forName("eg.FooBarTee2")
+                    .getConstructor(String.class)
+                    .newInstance("test foo bar tee");
             Foo foo = fooBarTee.foo;
             assertNotNull(foo);
             assertEquals(text, foo.s);

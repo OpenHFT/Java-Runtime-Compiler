@@ -26,11 +26,9 @@ public class FooBarTee {
     public final TeeImpl tee;
     public final BarImpl bar;
     public final BarImpl copy;
-    public final Foo foo;
+    public Foo foo;
 
     public FooBarTee(String name) {
-        // when viewing this file, ensure it is synchronised with the copy on disk.
-        System.out.println("generated test Tue Aug 11 07:09:54 BST 2015");
         this.name = name;
 
         tee = new TeeImpl("test");
