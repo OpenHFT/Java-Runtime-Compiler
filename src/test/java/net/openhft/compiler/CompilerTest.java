@@ -65,39 +65,39 @@ public class CompilerTest extends TestCase {
                 CompilerUtils.CACHED_COMPILER;
 
         String text = "generated test " + new Date();
-        cc.loadFromJava(EG_FOO_BAR_TEE + 3, "package eg;\n" +
-                '\n' +
-                "import eg.components.BarImpl;\n" +
-                "import eg.components.TeeImpl;\n" +
-                "import eg.components.Foo;\n" +
-                '\n' +
-                "public class FooBarTee3 extends FooBarTee {\n" +
-                '\n' +
-                "    public FooBarTee3(String name) {\n" +
-                "        super(name);\n" +
-                "        // when viewing this file, ensure it is synchronised with the copy on disk.\n" +
-                "        System.out.println(\"" + text + "\");\n" +
-                '\n' +
-                "        // you should see the current date here after synchronisation.\n" +
-                "        foo = new Foo(bar, copy, \"" + text + "\", 5);\n" +
-                "    }\n" +
-                '\n' +
-                "    public void start() {\n" +
-                "    }\n" +
-                '\n' +
-                "    public void stop() {\n" +
-                "    }\n" +
-                '\n' +
-                "    public void close() {\n" +
-                "        stop();\n" +
-                '\n' +
-                "    }\n" +
-                "}\n");
-
-        // add a debug break point here and step into this method.
         try {
-            FooBarTee fooBarTee = (FooBarTee) Class
-                    .forName("eg.FooBarTee3")
+            final Class aClass =
+                    cc.loadFromJava(EG_FOO_BAR_TEE + 3, "package eg;\n" +
+                            '\n' +
+                            "import eg.components.BarImpl;\n" +
+                            "import eg.components.TeeImpl;\n" +
+                            "import eg.components.Foo;\n" +
+                            '\n' +
+                            "public class FooBarTee3 extends FooBarTee {\n" +
+                            '\n' +
+                            "    public FooBarTee3(String name) {\n" +
+                            "        super(name);\n" +
+                            "        // when viewing this file, ensure it is synchronised with the copy on disk.\n" +
+                            "        System.out.println(\"" + text + "\");\n" +
+                            '\n' +
+                            "        // you should see the current date here after synchronisation.\n" +
+                            "        foo = new Foo(bar, copy, \"" + text + "\", 5);\n" +
+                            "    }\n" +
+                            '\n' +
+                            "    public void start() {\n" +
+                            "    }\n" +
+                            '\n' +
+                            "    public void stop() {\n" +
+                            "    }\n" +
+                            '\n' +
+                            "    public void close() {\n" +
+                            "        stop();\n" +
+                            '\n' +
+                            "    }\n" +
+                            "}\n");
+
+            // add a debug break point here and step into this method.
+            FooBarTee fooBarTee = (FooBarTee) aClass
                     .getConstructor(String.class)
                     .newInstance("test foo bar tee");
             Foo foo = fooBarTee.foo;
