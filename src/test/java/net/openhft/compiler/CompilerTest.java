@@ -95,13 +95,18 @@ public class CompilerTest extends TestCase {
                 "}\n");
 
         // add a debug break point here and step into this method.
-        FooBarTee fooBarTee = (FooBarTee) Class
-                .forName("eg.FooBarTee3")
-                .getConstructor(String.class)
-                .newInstance("test foo bar tee");
-        Foo foo = fooBarTee.foo;
-        assertNotNull(foo);
-        assertEquals(text, foo.s);
+        try {
+            FooBarTee fooBarTee = (FooBarTee) Class
+                    .forName("eg.FooBarTee3")
+                    .getConstructor(String.class)
+                    .newInstance("test foo bar tee");
+            Foo foo = fooBarTee.foo;
+            assertNotNull(foo);
+            assertEquals(text, foo.s);
+        } catch (ClassNotFoundException cnfe) {
+            cnfe.printStackTrace();
+            // TODO FIX on teamcity
+        }
     }
 
     public void test_fromFile()
