@@ -6,7 +6,7 @@ Java-Runtime-Compiler
 This takes a String, compiles it and loads it returning you a class from what you built.  
 By default it uses the current ClassLoader.  It supports nested classes, otherwise builds one class at a time.
 
-## On maven central
+== On maven central
 
 You can include in your project with
 
@@ -18,7 +18,7 @@ You can include in your project with
 </dependency>
 ```
 
-## Simple example
+== Simple example
 
 You need a CachedCompiler and access to your JDK's tools.jar.
 
