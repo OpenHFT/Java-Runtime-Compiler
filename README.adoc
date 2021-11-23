@@ -3,6 +3,26 @@ Java-Runtime-Compiler
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler/badge.svg)](https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler)
 [![Javadoc](https://javadoc.io/badge2/net.openhft/compiler/javadoc.svg)](https://javadoc.io/doc/net.openhft/compiler)
 
+
+= Chronicle Runtime Compiler
+Chronicle Software
+:css-signature: demo
+:toc: macro
+:toclevels: 2
+:icons: font
+
+image:https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler/badge.svg[caption="",link=https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler]
+image:https://javadoc.io/badge2/net.openhft/compiler/javadoc.svg[link="https://www.javadoc.io/doc/net.openhft/compiler/latest/index.html"]
+//image:https://javadoc-badge.appspot.com/net.openhft/compiler.svg?label=javadoc[JavaDoc, link=https://www.javadoc.io/doc/net.openhft/compiler]
+image:https://img.shields.io/github/license/OpenHFT/Java-Runtime-Compiler[GitHub]
+image:https://img.shields.io/badge/release%20notes-subscribe-brightgreen[link="https://chronicle.software/release-notes/"]
+image:https://sonarcloud.io/api/project_badges/measure?project=OpenHFT_Java-Runtime-Compiler&metric=alert_status[link="https://sonarcloud.io/dashboard?id=OpenHFT_Java-Runtime-Compiler"]
+
+image::docs/images/Map_line.png[width=20%]
+
+toc::[]
+
+
 This takes a String, compiles it and loads it returning you a class from what you built.  
 By default it uses the current ClassLoader.  It supports nested classes, otherwise builds one class at a time.
 
