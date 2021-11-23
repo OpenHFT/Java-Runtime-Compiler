@@ -1,9 +1,3 @@
-Java-Runtime-Compiler
-=====================
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler/badge.svg)](https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler)
-[![Javadoc](https://javadoc.io/badge2/net.openhft/compiler/javadoc.svg)](https://javadoc.io/doc/net.openhft/compiler)
-
-
 = Chronicle Runtime Compiler
 Chronicle Software
 :css-signature: demo
