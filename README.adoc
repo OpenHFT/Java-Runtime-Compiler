@@ -18,8 +18,6 @@ image:https://img.shields.io/github/license/OpenHFT/Java-Runtime-Compiler[GitHub
 image:https://img.shields.io/badge/release%20notes-subscribe-brightgreen[link="https://chronicle.software/release-notes/"]
 image:https://sonarcloud.io/api/project_badges/measure?project=OpenHFT_Java-Runtime-Compiler&metric=alert_status[link="https://sonarcloud.io/dashboard?id=OpenHFT_Java-Runtime-Compiler"]
 
-image::docs/images/Map_line.png[width=20%]
-
 toc::[]
 
 
