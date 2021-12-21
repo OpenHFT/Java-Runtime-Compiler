@@ -71,11 +71,15 @@ class MyJavaFileManager implements JavaFileManager {
         this.fileManager = fileManager;
     }
 
-    public Iterable<Set<Location>> listLocationsForModules(final Location location) {
+    // Apparently, this method might not be thread-safe.
+    // See https://github.com/OpenHFT/Java-Runtime-Compiler/issues/85
+    public synchronized Iterable<Set<Location>> listLocationsForModules(final Location location) {
         return invokeNamedMethodIfAvailable(location, "listLocationsForModules");
     }
 
-    public String inferModuleName(final Location location) {
+    // Apparently, this method might not be thread-safe.
+    // See https://github.com/OpenHFT/Java-Runtime-Compiler/issues/85
+    public synchronized String inferModuleName(final Location location) {
         return invokeNamedMethodIfAvailable(location, "inferModuleName");
     }
 
