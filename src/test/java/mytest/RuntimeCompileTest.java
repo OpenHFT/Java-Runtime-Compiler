@@ -42,7 +42,7 @@ public class RuntimeCompileTest {
         }
     }
 
-    @Ignore("see https://teamcity.chronicle.software/viewLog.html?buildId=639347&tab=buildResultsDiv&buildTypeId=OpenHFT_BuildAll_BuildJava11compileJava11")
+    //@Ignore("see https://teamcity.chronicle.software/viewLog.html?buildId=639347&tab=buildResultsDiv&buildTypeId=OpenHFT_BuildAll_BuildJava11compileJava11")
     @Test
     public void testMultiThread() throws Exception {
         StringBuilder largeClass = new StringBuilder("package mytest;\n" +
@@ -64,6 +64,7 @@ public class RuntimeCompileTest {
         final ClassLoader cl = new URLClassLoader(new URL[0]);
         final CachedCompiler cc = new CachedCompiler(null, null);
         final int nThreads = Runtime.getRuntime().availableProcessors();
+        System.out.println("nThreads = " + nThreads);
         final AtomicInteger started = new AtomicInteger(0);
         final ExecutorService executor = Executors.newFixedThreadPool(nThreads);
         final List<Future<?>> futures = new ArrayList<>();
