@@ -42,7 +42,7 @@ public class CachedCompiler implements Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(CachedCompiler.class);
     private static final PrintWriter DEFAULT_WRITER = new PrintWriter(System.err);
 
-    private final Map<ClassLoader, Map<String, Class>> loadedClassesMap = Collections.synchronizedMap(new WeakHashMap<>());
+    private final Map<ClassLoader, Map<String, Class<?>>> loadedClassesMap = Collections.synchronizedMap(new WeakHashMap<>());
     private final Map<ClassLoader, MyJavaFileManager> fileManagerMap = Collections.synchronizedMap(new WeakHashMap<>());
 
     @Nullable
@@ -130,12 +130,12 @@ public class CachedCompiler implements Closeable {
                               @NotNull String className,
                               @NotNull String javaCode,
                               @Nullable PrintWriter writer) throws ClassNotFoundException {
-        Class clazz = null;
-        Map<String, Class> loadedClasses;
+        Class<?> clazz = null;
+        Map<String, Class<?>> loadedClasses;
         synchronized (loadedClassesMap) {
             loadedClasses = loadedClassesMap.get(classLoader);
             if (loadedClasses == null)
-                loadedClassesMap.put(classLoader, loadedClasses = new LinkedHashMap<String, Class>());
+                loadedClassesMap.put(classLoader, loadedClasses = new LinkedHashMap<>());
             else
                 clazz = loadedClasses.get(className);
         }
