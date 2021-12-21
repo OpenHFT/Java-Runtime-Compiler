@@ -2,6 +2,7 @@ package mytest;
 
 import net.openhft.compiler.CachedCompiler;
 import net.openhft.compiler.CompilerUtils;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.URL;
@@ -41,6 +42,7 @@ public class RuntimeCompileTest {
         }
     }
 
+    @Ignore("see https://teamcity.chronicle.software/viewLog.html?buildId=639347&tab=buildResultsDiv&buildTypeId=OpenHFT_BuildAll_BuildJava11compileJava11")
     @Test
     public void testMultiThread() throws Exception {
         StringBuilder largeClass = new StringBuilder("package mytest;\n" +
@@ -50,7 +52,7 @@ public class RuntimeCompileTest {
                 "    public void accept(int num) {\n" +
                 "        called.incrementAndGet();\n" +
                 "    }\n");
-        for (int j=0;j<1_000;j++) {
+        for (int j=0; j<1_000; j++) {
             largeClass.append("    public void accept"+j+"(int num) {\n" +
                     "        if ((byte) num != num)\n" +
                     "            throw new IllegalArgumentException();\n" +
