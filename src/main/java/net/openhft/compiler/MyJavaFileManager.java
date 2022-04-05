@@ -99,7 +99,7 @@ class MyJavaFileManager implements JavaFileManager {
         return fileManager.isSameFile(a, b);
     }
 
-    public boolean handleOption(String current, Iterator<String> remaining) {
+    public synchronized boolean handleOption(String current, Iterator<String> remaining) {
         return fileManager.handleOption(current, remaining);
     }
 
