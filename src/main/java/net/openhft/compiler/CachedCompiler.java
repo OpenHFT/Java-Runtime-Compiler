@@ -41,6 +41,7 @@ import static net.openhft.compiler.CompilerUtils.*;
 public class CachedCompiler implements Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(CachedCompiler.class);
     private static final PrintWriter DEFAULT_WRITER = new PrintWriter(System.err);
+    private static final List<String> DEFAULT_OPTIONS = Arrays.asList("-g", "-nowarn");
 
     private final Map<ClassLoader, Map<String, Class<?>>> loadedClassesMap = Collections.synchronizedMap(new WeakHashMap<>());
     private final Map<ClassLoader, MyJavaFileManager> fileManagerMap = Collections.synchronizedMap(new WeakHashMap<>());
@@ -49,12 +50,19 @@ public class CachedCompiler implements Closeable {
     private final File sourceDir;
     @Nullable
     private final File classDir;
+    @NotNull
+    private final List<String> options;
 
     private final ConcurrentMap<String, JavaFileObject> javaFileObjects = new ConcurrentHashMap<>();
 
     public CachedCompiler(@Nullable File sourceDir, @Nullable File classDir) {
+        this(sourceDir, classDir, DEFAULT_OPTIONS);
+    }
+
+    public CachedCompiler(@Nullable File sourceDir, @Nullable File classDir, @NotNull List<String> options) {
         this.sourceDir = sourceDir;
         this.classDir = classDir;
+        this.options = options;
     }
 
     public void close() {
@@ -101,7 +109,6 @@ public class CachedCompiler implements Closeable {
             compilationUnits = new ArrayList<>(javaFileObjects.values()); // To prevent CME from compiler code
         }
         // reuse the same file manager to allow caching of jar files
-        List<String> options = Arrays.asList("-g", "-nowarn");
         boolean ok = s_compiler.getTask(writer, fileManager, new DiagnosticListener<JavaFileObject>() {
             @Override
             public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
