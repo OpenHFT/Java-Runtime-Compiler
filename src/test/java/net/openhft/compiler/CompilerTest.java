@@ -61,7 +61,7 @@ public class CompilerTest extends TestCase {
 
         // this writes the file to disk only when debugging is enabled.
         CachedCompiler cc = CompilerUtils.DEBUGGING ?
-                new CachedCompiler(new File(parent, "src/test/java"), new File(parent, "target/compiled")) :
+                new CachedCompiler(new File(parent, "target/generated-test-sources"), new File(parent, "target/test-classes")) :
                 CompilerUtils.CACHED_COMPILER;
 
         String text = "generated test " + new Date();
