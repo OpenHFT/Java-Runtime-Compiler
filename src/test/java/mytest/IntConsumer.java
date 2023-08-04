@@ -18,6 +18,11 @@
 
 package mytest;
 
+// `IntConsumer` interface defining a contract for classes that implement it.
+// This functional interface represents an operation that accepts a single integer input argument
+// and returns no result. It is used to perform an action on the given integer value.
 public interface IntConsumer {
+    // Abstract method that must be implemented by any class implementing this interface.
+    // It takes an integer value and performs an operation defined by the implementing class.
     void accept(int num);
 }

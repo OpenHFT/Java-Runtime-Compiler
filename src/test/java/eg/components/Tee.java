@@ -18,6 +18,10 @@
 
 package eg.components;
 
+// `Tee` interface defining a contract for classes that implement it.
+// It mandates the implementation of a method that retrieves a string value.
 interface Tee {
+    // Abstract method that must be implemented by any class implementing this interface.
+    // It is expected to return a string value.
     String getS();
 }

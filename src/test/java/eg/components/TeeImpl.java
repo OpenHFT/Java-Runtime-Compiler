@@ -18,13 +18,17 @@
 
 package eg.components;
 
+// `TeeImpl` class that implements the `Tee` interface.
 public class TeeImpl implements Tee {
+    // Immutable string field `s`.
     final String s;
 
+    // Constructor for `TeeImpl` that initializes the `s` field.
     public TeeImpl(String s) {
-        this.s = s;
+        this.s = s; // Initialize the `s` field with the provided value.
     }
 
+    // Getter method to retrieve the `s` field.
     public String getS() {
         return s;
     }

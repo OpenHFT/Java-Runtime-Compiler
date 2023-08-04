@@ -19,16 +19,25 @@
 package eg.components;
 
 @SuppressWarnings({"QuestionableName"})
+// `Foo` class that encapsulates several properties including objects that implement the `Bar` interface.
 public class Foo {
+    // Immutable reference to an object that implements the `Bar` interface.
     public final Bar bar;
+
+    // Immutable reference to another object that implements the `Bar` interface, which may be a copy or another instance.
     public final Bar copy;
+
+    // Immutable string field.
     public final String s;
+
+    // Immutable integer field.
     public final int i;
 
+    // Constructor for `Foo` that initializes the `bar`, `copy`, `s`, and `i` fields.
     public Foo(Bar bar, Bar copy, String s, int i) {
-        this.bar = bar;
-        this.copy = copy;
-        this.s = s;
-        this.i = i;
+        this.bar = bar; // Initialize the `bar` field with the provided value.
+        this.copy = copy; // Initialize the `copy` field with the provided value.
+        this.s = s; // Initialize the `s` (string) field with the provided value.
+        this.i = i; // Initialize the `i` (integer) field with the provided value.
     }
 }

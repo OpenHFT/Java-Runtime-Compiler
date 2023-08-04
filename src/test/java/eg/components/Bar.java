@@ -18,8 +18,14 @@
 
 package eg.components;
 
+// `Bar` interface defining a contract for classes that implement it.
+// It mandates the implementation of methods that retrieve a `Tee` object and an integer value.
 interface Bar {
+    // Abstract method that must be implemented by any class implementing this interface.
+    // It is expected to return an object that implements the `Tee` interface.
     Tee getTee();
 
+    // Abstract method that must be implemented by any class implementing this interface.
+    // It is expected to return an integer value.
     int getI();
 }

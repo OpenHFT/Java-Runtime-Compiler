@@ -38,6 +38,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class RuntimeCompileTest {
+    // A string containing Java code to be compiled at runtime. The class implements `IntConsumer` and validates the value of a given integer.
     static String code = "package mytest;\n" +
             "public class Test implements IntConsumer {\n" +
             "    public void accept(int num) {\n" +
@@ -46,20 +47,23 @@ public class RuntimeCompileTest {
             "    }\n" +
             "}\n";
 
+    // Test to check if an `IllegalArgumentException` is thrown when a number out of byte range is passed.
     @Test
     public void outOfBounds() throws Exception {
         ClassLoader cl = new URLClassLoader(new URL[0]);
         Class<?> aClass = CompilerUtils.CACHED_COMPILER.
                 loadFromJava(cl, "mytest.Test", code);
         IntConsumer consumer = (IntConsumer) aClass.getDeclaredConstructor().newInstance();
-        consumer.accept(1); // ok
+        consumer.accept(1); // ok, within byte range
         try {
-            consumer.accept(128); // no ok
+            consumer.accept(128); // not ok, out of byte range
             fail();
         } catch (IllegalArgumentException expected) {
+            // Expected exception
         }
     }
 
+    // Test to validate multi-threaded compilation and execution. It compiles and runs a class implementing `IntConsumer` and `IntSupplier` with concurrent threads.
     //@Ignore("see https://teamcity.chronicle.software/viewLog.html?buildId=639347&tab=buildResultsDiv&buildTypeId=OpenHFT_BuildAll_BuildJava11compileJava11")
     @Test
     public void testMultiThread() throws Exception {
@@ -70,8 +74,9 @@ public class RuntimeCompileTest {
                 "    public void accept(int num) {\n" +
                 "        called.incrementAndGet();\n" +
                 "    }\n");
-        for (int j=0; j<1_000; j++) {
-            largeClass.append("    public void accept"+j+"(int num) {\n" +
+        // Building a large class with multiple `accept` methods
+        for (int j = 0; j < 1_000; j++) {
+            largeClass.append("    public void accept" + j + "(int num) {\n" +
                     "        if ((byte) num != num)\n" +
                     "            throw new IllegalArgumentException();\n" +
                     "    }\n");
@@ -86,7 +91,8 @@ public class RuntimeCompileTest {
         final AtomicInteger started = new AtomicInteger(0);
         final ExecutorService executor = Executors.newFixedThreadPool(nThreads);
         final List<Future<?>> futures = new ArrayList<>();
-        for (int i=0; i<nThreads; i++) {
+        // Submitting tasks to compile and run the code in parallel threads
+        for (int i = 0; i < nThreads; i++) {
             final int value = i;
             futures.add(executor.submit(() -> {
                 started.incrementAndGet();
@@ -102,11 +108,12 @@ public class RuntimeCompileTest {
             }));
         }
         executor.shutdown();
+        // Waiting for all threads to complete
         for (Future<?> f : futures)
             f.get(10, TimeUnit.SECONDS);
         Class<?> aClass = cc.loadFromJava(cl, "mytest.Test2", code2);
         IntSupplier consumer = (IntSupplier) aClass.getDeclaredConstructor().newInstance();
+        // Asserting that the consumer was called the same number of times as the number of threads
         assertEquals(nThreads, consumer.getAsInt());
     }
 }
-

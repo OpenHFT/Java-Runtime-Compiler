@@ -21,14 +21,29 @@ package net.openhft.compiler;
 import java.io.ByteArrayOutputStream;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * A closeable extension of ByteArrayOutputStream that encapsulates a CompletableFuture
+ * to be completed when the stream is closed. This class provides additional functionality
+ * to monitor and handle the closure of the ByteArrayOutputStream.
+ *
+ * @since 2023-08-04
+ */
 public class CloseableByteArrayOutputStream extends ByteArrayOutputStream {
     private final CompletableFuture<?> closeFuture = new CompletableFuture<>();
 
+    /**
+     * Closes the ByteArrayOutputStream and completes the close future.
+     */
     @Override
     public void close() {
         closeFuture.complete(null);
     }
 
+    /**
+     * Returns the CompletableFuture associated with the close operation of the stream.
+     *
+     * @return The CompletableFuture representing the close operation
+     */
     public CompletableFuture<?> closeFuture() {
         return closeFuture;
     }
