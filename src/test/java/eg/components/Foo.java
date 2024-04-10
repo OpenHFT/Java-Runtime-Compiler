@@ -18,7 +18,7 @@
 
 package eg.components;
 
-@SuppressWarnings({"QuestionableName"})
+@SuppressWarnings("QuestionableName")
 public class Foo {
     public final Bar bar;
     public final Bar copy;
