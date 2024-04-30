@@ -39,7 +39,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-class MyJavaFileManager implements JavaFileManager {
+public class MyJavaFileManager implements JavaFileManager {
     private static final Logger LOG = LoggerFactory.getLogger(MyJavaFileManager.class);
     private final static Unsafe unsafe;
     private static final long OVERRIDE_OFFSET;
@@ -67,7 +67,7 @@ class MyJavaFileManager implements JavaFileManager {
     // synchronizing due to ConcurrentModificationException
     private final Map<String, CloseableByteArrayOutputStream> buffers = Collections.synchronizedMap(new LinkedHashMap<>());
 
-    MyJavaFileManager(StandardJavaFileManager fileManager) {
+    public MyJavaFileManager(StandardJavaFileManager fileManager) {
         this.fileManager = fileManager;
     }
 
