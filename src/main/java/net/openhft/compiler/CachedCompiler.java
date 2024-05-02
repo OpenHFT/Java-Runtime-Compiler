@@ -34,6 +34,7 @@ import java.io.PrintWriter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 
 import static net.openhft.compiler.CompilerUtils.*;
 
@@ -45,6 +46,7 @@ public class CachedCompiler implements Closeable {
 
     private final Map<ClassLoader, Map<String, Class<?>>> loadedClassesMap = Collections.synchronizedMap(new WeakHashMap<>());
     private final Map<ClassLoader, MyJavaFileManager> fileManagerMap = Collections.synchronizedMap(new WeakHashMap<>());
+    public Function<StandardJavaFileManager, MyJavaFileManager> fileManagerOverride;
 
     @Nullable
     private final File sourceDir;
@@ -125,8 +127,7 @@ public class CachedCompiler implements Closeable {
 
             // nothing to return due to compiler error
             return Collections.emptyMap();
-        }
-        else {
+        } else {
             Map<String, byte[]> result = fileManager.getAllBuffers();
 
             return result;
@@ -153,7 +154,8 @@ public class CachedCompiler implements Closeable {
         MyJavaFileManager fileManager = fileManagerMap.get(classLoader);
         if (fileManager == null) {
             StandardJavaFileManager standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
-            fileManagerMap.put(classLoader, fileManager = new MyJavaFileManager(standardJavaFileManager));
+            fileManager = getFileManager(standardJavaFileManager);
+            fileManagerMap.put(classLoader, fileManager);
         }
         final Map<String, byte[]> compiled = compileFromJava(className, javaCode, printWriter, fileManager);
         for (Map.Entry<String, byte[]> entry : compiled.entrySet()) {
@@ -187,5 +189,11 @@ public class CachedCompiler implements Closeable {
             loadedClasses.put(className, clazz = classLoader.loadClass(className));
         }
         return clazz;
+    }
+
+    private @NotNull MyJavaFileManager getFileManager(StandardJavaFileManager fm) {
+        return fileManagerOverride != null
+                ? fileManagerOverride.apply(fm)
+                : new MyJavaFileManager(fm);
     }
 }
