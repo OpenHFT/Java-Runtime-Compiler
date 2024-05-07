@@ -299,4 +299,3 @@ public class CompilerTest extends TestCase {
         }
     }
 }
-
