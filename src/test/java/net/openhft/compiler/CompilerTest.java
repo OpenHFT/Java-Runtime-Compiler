@@ -66,7 +66,7 @@ public class CompilerTest extends TestCase {
 
         String text = "generated test " + new Date();
         try {
-            final Class aClass =
+            final Class<?> aClass =
                     cc.loadFromJava(EG_FOO_BAR_TEE + 3, "package eg;\n" +
                             '\n' +
                             "import eg.components.BarImpl;\n" +
@@ -112,7 +112,7 @@ public class CompilerTest extends TestCase {
     public void test_fromFile()
             throws ClassNotFoundException, IOException, IllegalAccessException, InstantiationException,
             NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
-        Class clazz = CompilerUtils.loadFromResource("eg.FooBarTee2", "eg/FooBarTee2.jcf");
+        Class<?> clazz = CompilerUtils.loadFromResource("eg.FooBarTee2", "eg/FooBarTee2.jcf");
         // turn off System.out
         PrintStream out = System.out;
         try {
@@ -269,7 +269,7 @@ public class CompilerTest extends TestCase {
         }
 
         // ensure next class can be compiled and used
-        Class testClass = CompilerUtils.CACHED_COMPILER.loadFromJava(
+        Class<?> testClass = CompilerUtils.CACHED_COMPILER.loadFromJava(
                 getClass().getClassLoader(), "S", "class S {" +
                         "public static final String s = \"ok\";}");
 
@@ -292,11 +292,10 @@ public class CompilerTest extends TestCase {
             ClassLoader classLoader = new ClassLoader() {
             };
             CachedCompiler cc = new CachedCompiler(null, null);
-            Class a = cc.loadFromJava(classLoader, "A", "public class A { static int i = " + i + "; }");
-            Class b = cc.loadFromJava(classLoader, "B", "public class B implements net.openhft.compiler.MyIntSupplier { public int get() { return A.i; } }");
+            Class<?> a = cc.loadFromJava(classLoader, "A", "public class A { static int i = " + i + "; }");
+            Class<?> b = cc.loadFromJava(classLoader, "B", "public class B implements net.openhft.compiler.MyIntSupplier { public int get() { return A.i; } }");
             MyIntSupplier bi = (MyIntSupplier) b.getDeclaredConstructor().newInstance();
             assertEquals(i, bi.get());
         }
     }
 }
-

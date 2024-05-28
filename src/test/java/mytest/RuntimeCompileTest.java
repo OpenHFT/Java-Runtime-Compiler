@@ -108,4 +108,3 @@ public class RuntimeCompileTest {
         assertEquals(nThreads, consumer.getAsInt());
     }
 }
-
