@@ -21,14 +21,28 @@ package net.openhft.compiler;
 import java.io.ByteArrayOutputStream;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * This class extends ByteArrayOutputStream and provides a CompletableFuture
+ * that completes when the stream is closed.
+ */
 public class CloseableByteArrayOutputStream extends ByteArrayOutputStream {
+    // CompletableFuture that completes when the stream is closed
     private final CompletableFuture<?> closeFuture = new CompletableFuture<>();
 
+    /**
+     * Closes this output stream and completes the closeFuture.
+     */
     @Override
     public void close() {
+        // Complete the closeFuture to signal that the stream has been closed
         closeFuture.complete(null);
     }
 
+    /**
+     * Returns the CompletableFuture that completes when the stream is closed.
+     *
+     * @return The CompletableFuture that completes when the stream is closed
+     */
     public CompletableFuture<?> closeFuture() {
         return closeFuture;
     }

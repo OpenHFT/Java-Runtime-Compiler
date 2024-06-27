@@ -37,7 +37,7 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 
 /**
- * This class support loading and debugging Java Classes dynamically.
+ * This class supports loading and debugging Java Classes dynamically.
  */
 public enum CompilerUtils {
     ; // none
@@ -73,12 +73,21 @@ public enum CompilerUtils {
         reset();
     }
 
-    private static boolean isDebug() {
+    /**
+     * Checks if the JVM is running in debug mode.
+     *
+     * @return true if the JVM is in debug mode, false otherwise
+     */
+    public static boolean isDebug() {
         String inputArguments = ManagementFactory.getRuntimeMXBean().getInputArguments().toString();
         return inputArguments.contains("-Xdebug") || inputArguments.contains("-agentlib:jdwp=");
     }
 
-    private static void reset() {
+    /**
+     * Resets the Java compiler instance. Attempts to load the system Java compiler
+     * or the JavacTool if the system compiler is not available.
+     */
+    public static void reset() {
         s_compiler = ToolProvider.getSystemJavaCompiler();
         if (s_compiler == null) {
             try {
@@ -92,35 +101,36 @@ public enum CompilerUtils {
     }
 
     /**
-     * Load a java class file from the classpath or local file system.
+     * Loads a Java class file from the classpath or local file system.
      *
-     * @param className    expected class name of the outer class.
-     * @param resourceName as the full file name with extension.
-     * @return the outer class loaded.
-     * @throws IOException            the resource could not be loaded.
-     * @throws ClassNotFoundException the class name didn't match or failed to initialise.
+     * @param className    The expected class name of the outer class
+     * @param resourceName The full file name with extension
+     * @return The outer class loaded
+     * @throws IOException            If the resource could not be loaded
+     * @throws ClassNotFoundException If the class name didn't match or failed to initialize
      */
     public static Class<?> loadFromResource(@NotNull String className, @NotNull String resourceName) throws IOException, ClassNotFoundException {
         return loadFromJava(className, readText(resourceName));
     }
 
     /**
-     * Load a java class from text.
+     * Loads a Java class from the provided Java source code.
      *
-     * @param className expected class name of the outer class.
-     * @param javaCode  to compile and load.
-     * @return the outer class loaded.
-     * @throws ClassNotFoundException the class name didn't match or failed to initialise.
+     * @param className The expected class name of the outer class
+     * @param javaCode  The Java source code to compile and load
+     * @return The outer class loaded
+     * @throws ClassNotFoundException If the class name didn't match or failed to initialize
      */
     private static Class<?> loadFromJava(@NotNull String className, @NotNull String javaCode) throws ClassNotFoundException {
         return CACHED_COMPILER.loadFromJava(Thread.currentThread().getContextClassLoader(), className, javaCode);
     }
 
     /**
-     * Add a directory to the class path for compiling.  This can be required with custom
+     * Adds a directory to the classpath for compiling. This can be required with custom
+     * libraries or dependencies.
      *
-     * @param dir to add.
-     * @return whether the directory was found, if not it is not added either.
+     * @param dir The directory to add
+     * @return Whether the directory was found and added successfully
      */
     public static boolean addClassPath(@NotNull String dir) {
         File file = new File(dir);
@@ -131,6 +141,7 @@ public enum CompilerUtils {
             } catch (IOException ignored) {
                 path = file.getAbsolutePath();
             }
+            // Add the directory to the classpath if not already present
             if (!Arrays.asList(System.getProperty(JAVA_CLASS_PATH).split(File.pathSeparator)).contains(path))
                 System.setProperty(JAVA_CLASS_PATH, System.getProperty(JAVA_CLASS_PATH) + File.pathSeparator + path);
 
@@ -142,10 +153,10 @@ public enum CompilerUtils {
     }
 
     /**
-     * Define a class for byte code.
+     * Defines a class from the provided byte code.
      *
-     * @param className expected to load.
-     * @param bytes     of the byte code.
+     * @param className The expected class name
+     * @param bytes     The byte code of the class
      */
     public static void defineClass(@NotNull String className, @NotNull byte[] bytes) {
         defineClass(Thread.currentThread().getContextClassLoader(), className, bytes);
@@ -169,6 +180,13 @@ public enum CompilerUtils {
         }
     }
 
+    /**
+     * Reads the text content from a resource.
+     *
+     * @param resourceName The name of the resource
+     * @return The text content of the resource
+     * @throws IOException If the resource cannot be read
+     */
     private static String readText(@NotNull String resourceName) throws IOException {
         if (resourceName.startsWith("="))
             return resourceName.substring(1);
@@ -185,8 +203,14 @@ public enum CompilerUtils {
         return sw.toString();
     }
 
+    /**
+     * Decodes a byte array into a UTF-8 string.
+     *
+     * @param bytes The byte array to decode
+     * @return The decoded string
+     */
     @NotNull
-    private static String decodeUTF8(@NotNull byte[] bytes) {
+    public static String decodeUTF8(@NotNull byte[] bytes) {
         try {
             return new String(bytes, UTF_8.name());
         } catch (UnsupportedEncodingException e) {
@@ -194,9 +218,15 @@ public enum CompilerUtils {
         }
     }
 
+    /**
+     * Reads the bytes from a file.
+     *
+     * @param file The file to read
+     * @return The bytes read from the file, or null if the file does not exist
+     */
     @Nullable
     @SuppressWarnings("ReturnOfNull")
-    private static byte[] readBytes(@NotNull File file) {
+    public static byte[] readBytes(@NotNull File file) {
         if (!file.exists()) return null;
         long len = file.length();
         if (len > Runtime.getRuntime().totalMemory() / 10)
@@ -215,7 +245,12 @@ public enum CompilerUtils {
         return bytes;
     }
 
-    private static void close(@Nullable Closeable closeable) {
+    /**
+     * Closes a Closeable object, suppressing any IOException that occurs.
+     *
+     * @param closeable The Closeable object to close
+     */
+    public static void close(@Nullable Closeable closeable) {
         if (closeable != null)
             try {
                 closeable.close();
@@ -224,12 +259,25 @@ public enum CompilerUtils {
             }
     }
 
+    /**
+     * Writes a string as UTF-8 text to a file.
+     *
+     * @param file The file to write to
+     * @param text The text to write
+     * @return true if the file was written successfully, false otherwise
+     */
     public static boolean writeText(@NotNull File file, @NotNull String text) {
         return writeBytes(file, encodeUTF8(text));
     }
 
+    /**
+     * Encodes a string into a byte array using UTF-8 encoding.
+     *
+     * @param text The string to encode
+     * @return The encoded byte array
+     */
     @NotNull
-    private static byte[] encodeUTF8(@NotNull String text) {
+    public static byte[] encodeUTF8(@NotNull String text) {
         try {
             return text.getBytes(UTF_8.name());
         } catch (UnsupportedEncodingException e) {
@@ -237,6 +285,15 @@ public enum CompilerUtils {
         }
     }
 
+    /**
+     * Writes a byte array to a file. If the file already exists and its contents
+     * are identical to the byte array, the file is not modified. If the contents
+     * differ, the file is backed up before being overwritten.
+     *
+     * @param file  The file to write to
+     * @param bytes The byte array to write
+     * @return true if the file was written successfully, false otherwise
+     */
     public static boolean writeBytes(@NotNull File file, @NotNull byte[] bytes) {
         File parentDir = file.getParentFile();
         if (!parentDir.isDirectory() && !parentDir.mkdirs())
@@ -266,8 +323,17 @@ public enum CompilerUtils {
         return true;
     }
 
+    /**
+     * Gets an InputStream for a given filename. The method tries to load the file
+     * from the classpath using the context class loader. If the file is not found,
+     * it falls back to loading it from the filesystem.
+     *
+     * @param filename The name of the file to load
+     * @return The InputStream for the file
+     * @throws FileNotFoundException If the file cannot be found
+     */
     @NotNull
-    private static InputStream getInputStream(@NotNull String filename) throws FileNotFoundException {
+    public static InputStream getInputStream(@NotNull String filename) throws FileNotFoundException {
         if (filename.isEmpty()) throw new IllegalArgumentException("The file name cannot be empty.");
         if (filename.charAt(0) == '=') return new ByteArrayInputStream(encodeUTF8(filename.substring(1)));
         ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();

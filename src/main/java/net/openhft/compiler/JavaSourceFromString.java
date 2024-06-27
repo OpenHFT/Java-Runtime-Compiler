@@ -23,7 +23,8 @@ import org.jetbrains.annotations.NotNull;
 import javax.tools.SimpleJavaFileObject;
 import java.net.URI;
 
-/* A file object used to represent source coming from a string.
+/**
+ * A file object used to represent source coming from a string.
  */
 class JavaSourceFromString extends SimpleJavaFileObject {
     /**
@@ -38,14 +39,22 @@ class JavaSourceFromString extends SimpleJavaFileObject {
      * @param code the source code for the compilation unit represented by this file object
      */
     JavaSourceFromString(@NotNull String name, String code) {
+        // Create a URI for the source file. The Kind.SOURCE indicates that this is a source file.
         super(URI.create("string:///" + name.replace('.', '/') + Kind.SOURCE.extension),
                 Kind.SOURCE);
         this.code = code;
     }
 
+    /**
+     * Returns the source code content of this file object.
+     *
+     * @param ignoreEncodingErrors If true, encoding errors are ignored
+     * @return The source code as a CharSequence
+     */
     @SuppressWarnings("RefusedBequest")
     @Override
     public CharSequence getCharContent(boolean ignoreEncodingErrors) {
+        // Return the source code content
         return code;
     }
 }
