@@ -21,6 +21,16 @@ package net.openhft.compiler;
 /*
  * Created by Peter Lawrey on 31/12/2016.
  */
+/**
+ * Interface representing a supplier of an integer value.
+ * Implementations of this interface provide a method to retrieve
+ * an integer value, possibly dynamically generated or computed.
+ */
 public interface MyIntSupplier {
+    /**
+     * Retrieves an integer value.
+     *
+     * @return the supplied integer value
+     */
     public int get();
 }
