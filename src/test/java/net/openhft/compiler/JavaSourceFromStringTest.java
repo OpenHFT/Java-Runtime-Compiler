@@ -1,6 +1,7 @@
 package net.openhft.compiler;
 
 import junit.framework.TestCase;
+
 import javax.tools.JavaFileObject;
 
 public class JavaSourceFromStringTest extends TestCase {

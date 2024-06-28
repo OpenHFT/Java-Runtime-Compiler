@@ -6,12 +6,13 @@ import org.junit.jupiter.api.Test;
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static sun.misc.IOUtils.readAllBytes;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 public class CompilerUtilsTest extends TestCase {
 
@@ -60,7 +61,8 @@ public class CompilerUtilsTest extends TestCase {
         String javaCode = "package net.openhft.compiler; public class TestDefineClassA {}";
         byte[] byteCode = compileClass(className, javaCode);
         assertNotNull(byteCode);
-        ClassLoader customClassLoader = new ClassLoader(getClass().getClassLoader()) {};
+        ClassLoader customClassLoader = new ClassLoader(getClass().getClassLoader()) {
+        };
         assertDoesNotThrow(() -> CompilerUtils.defineClass(customClassLoader, className, byteCode));
     }
 
@@ -70,7 +72,8 @@ public class CompilerUtilsTest extends TestCase {
         String javaCode = "package net.openhft.compiler; public class TestDefineClassB {}";
         byte[] byteCode = compileClass(className, javaCode);
         assertNotNull(byteCode);
-        ClassLoader customClassLoader = new ClassLoader(getClass().getClassLoader()) {};
+        ClassLoader customClassLoader = new ClassLoader(getClass().getClassLoader()) {
+        };
         assertDoesNotThrow(() -> CompilerUtils.defineClass(customClassLoader, className, byteCode));
     }
 

@@ -69,8 +69,8 @@ public class RuntimeCompileTest {
                 "    public void accept(int num) {\n" +
                 "        called.incrementAndGet();\n" +
                 "    }\n");
-        for (int j=0; j<1_000; j++) {
-            largeClass.append("    public void accept"+j+"(int num) {\n" +
+        for (int j = 0; j < 1_000; j++) {
+            largeClass.append("    public void accept" + j + "(int num) {\n" +
                     "        if ((byte) num != num)\n" +
                     "            throw new IllegalArgumentException();\n" +
                     "    }\n");
@@ -85,7 +85,7 @@ public class RuntimeCompileTest {
         final AtomicInteger started = new AtomicInteger(0);
         final ExecutorService executor = Executors.newFixedThreadPool(nThreads);
         final List<Future<?>> futures = new ArrayList<>();
-        for (int i=0; i<nThreads; i++) {
+        for (int i = 0; i < nThreads; i++) {
             final int value = i;
             futures.add(executor.submit(() -> {
                 started.incrementAndGet();

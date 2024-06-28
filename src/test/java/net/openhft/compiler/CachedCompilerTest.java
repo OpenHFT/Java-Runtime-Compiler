@@ -12,7 +12,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
 public class CachedCompilerTest extends TestCase {
     private CachedCompiler cachedCompiler;
     private StandardJavaFileManager standardJavaFileManager;
@@ -33,7 +34,8 @@ public class CachedCompilerTest extends TestCase {
     public void testLoadFromJavaWithClassLoaderClassNameAndCode() {
         String className = "net.openhft.compiler.TestClassB";
         String javaCode = "package net.openhft.compiler; public class TestClassB {}";
-        ClassLoader customClassLoader = new ClassLoader(getClass().getClassLoader()) {};
+        ClassLoader customClassLoader = new ClassLoader(getClass().getClassLoader()) {
+        };
         assertDoesNotThrow(() -> cachedCompiler.loadFromJava(customClassLoader, className, javaCode));
     }
 
@@ -65,7 +67,8 @@ public class CachedCompilerTest extends TestCase {
         String className = "net.openhft.compiler.TestClass5";
         String javaCode = "package net.openhft.compiler; public class TestClass5 {}";
         PrintWriter writer = new PrintWriter(System.err);
-        ClassLoader customClassLoader = new ClassLoader(getClass().getClassLoader()) {};
+        ClassLoader customClassLoader = new ClassLoader(getClass().getClassLoader()) {
+        };
         assertDoesNotThrow(() -> cachedCompiler.loadFromJava(customClassLoader, className, javaCode, writer));
     }
 
