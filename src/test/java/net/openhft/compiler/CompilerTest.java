@@ -190,7 +190,9 @@ public class CompilerTest extends TestCase {
                     new PrintWriter(writer));
             fail("Should have failed to compile");
         } catch (ClassNotFoundException e) {
-            // expected
+            // Should have been enhanced with additional details
+            assertTrue(e.getMessage().contains("Compilation errors"));
+            assertTrue(e.getCause() instanceof ClassNotFoundException);
         } finally {
             System.setOut(out);
             System.setErr(err);
@@ -314,7 +316,9 @@ public class CompilerTest extends TestCase {
                     diagnostics::add);
             fail("Should have failed to compile");
         } catch (ClassNotFoundException e) {
-            // expected
+            // Should have been enhanced with additional details
+            assertTrue(e.getMessage().contains("Compilation errors"));
+            assertTrue(e.getCause() instanceof ClassNotFoundException);
         } finally {
             System.setOut(out);
             System.setErr(err);
@@ -390,7 +394,9 @@ public class CompilerTest extends TestCase {
                     classLoader, "X", "clazz X {}", quietWriter);
             fail("Should have failed to compile");
         } catch (ClassNotFoundException e) {
-            // expected
+            // Should have been enhanced with additional details
+            assertTrue(e.getMessage().contains("Compilation errors"));
+            assertTrue(e.getCause() instanceof ClassNotFoundException);
         }
 
         // ensure next class can be compiled and used
@@ -409,6 +415,19 @@ public class CompilerTest extends TestCase {
 
         assertEquals("S", testClass.getName());
         assertEquals("ok", callable.call());
+    }
+
+    public void test_compilerErrorsButLoadingDifferentClass() throws Exception {
+        // quieten the compiler output
+        PrintWriter quietWriter = new PrintWriter(new StringWriter());
+
+        // TODO: Should this throw an exception due to the compilation error nonetheless to be less
+        // error-prone for users, even if loading class would succeed?
+        Class<?> testClass = compiler.loadFromJava(classLoader,
+                // Load other class which is unaffected by compilation error
+                String.class.getName(),
+                "clazz X {}", quietWriter);
+        assertSame(String.class, testClass);
     }
 
     @Test

@@ -35,6 +35,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static net.openhft.compiler.CompilerUtils.*;
 
@@ -155,17 +156,31 @@ public class CachedCompiler implements Closeable {
         if (clazz != null)
             return clazz;
 
-        PrintWriter printWriter = writer == null ? DEFAULT_WRITER : writer;
+        final PrintWriter writerFinal = writer == null ? DEFAULT_WRITER : writer;
+        final DiagnosticListener<? super JavaFileObject> diagnosticListenerFinal;
         if (diagnosticListener == null) {
-            diagnosticListener = new DiagnosticListener<JavaFileObject>() {
+            diagnosticListenerFinal = new DiagnosticListener<JavaFileObject>() {
                 @Override
                 public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
                     if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
-                        printWriter.println(diagnostic);
+                        writerFinal.println(diagnostic);
                     }
                 }
             };
+        } else {
+            diagnosticListenerFinal = diagnosticListener;
         }
+
+        List<Diagnostic<?>> errorDiagnostics = Collections.synchronizedList(new ArrayList<>());
+        DiagnosticListener<JavaFileObject> wrappingDiagnosticListener = new DiagnosticListener<JavaFileObject>() {
+            @Override
+            public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
+                if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
+                    errorDiagnostics.add(diagnostic);
+                }
+                diagnosticListenerFinal.report(diagnostic);
+            }
+        };
 
         MyJavaFileManager fileManager = fileManagerMap.get(classLoader);
         if (fileManager == null) {
@@ -173,7 +188,7 @@ public class CachedCompiler implements Closeable {
             fileManager = getFileManager(standardJavaFileManager);
             fileManagerMap.put(classLoader, fileManager);
         }
-        final Map<String, byte[]> compiled = compileFromJava(className, javaCode, printWriter, diagnosticListener, fileManager);
+        final Map<String, byte[]> compiled = compileFromJava(className, javaCode, writerFinal, wrappingDiagnosticListener, fileManager);
         for (Map.Entry<String, byte[]> entry : compiled.entrySet()) {
             String className2 = entry.getKey();
             synchronized (loadedClassesMap) {
@@ -202,7 +217,20 @@ public class CachedCompiler implements Closeable {
             }
         }
         synchronized (loadedClassesMap) {
-            loadedClasses.put(className, clazz = classLoader.loadClass(className));
+            try {
+                clazz = classLoader.loadClass(className);
+            } catch (ClassNotFoundException e) {
+                if (errorDiagnostics.isEmpty()) {
+                    throw e;
+                }
+
+                // Enhance exception message with compilation errors, otherwise it will might not
+                // be obvious that reason why loading failed is because compilation failed
+                String message = "Failed to load class " + className + "\nCompilation errors:\n";
+                message += errorDiagnostics.stream().map(Diagnostic::toString).collect(Collectors.joining("\n"));
+                throw new ClassNotFoundException(message, e);
+            }
+            loadedClasses.put(className, clazz);
         }
         return clazz;
     }
