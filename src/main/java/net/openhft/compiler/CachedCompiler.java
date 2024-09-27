@@ -31,6 +31,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.ref.WeakReference;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -44,7 +45,7 @@ public class CachedCompiler implements Closeable {
     private static final PrintWriter DEFAULT_WRITER = new PrintWriter(System.err);
     private static final List<String> DEFAULT_OPTIONS = Arrays.asList("-g", "-nowarn");
 
-    private final Map<ClassLoader, Map<String, Class<?>>> loadedClassesMap = Collections.synchronizedMap(new WeakHashMap<>());
+    private final Map<ClassLoader, Map<String, WeakReference<Class<?>>>> loadedClassesMap = Collections.synchronizedMap(new WeakHashMap<>());
     private final Map<ClassLoader, MyJavaFileManager> fileManagerMap = Collections.synchronizedMap(new WeakHashMap<>());
     public Function<StandardJavaFileManager, MyJavaFileManager> fileManagerOverride;
 
@@ -139,13 +140,19 @@ public class CachedCompiler implements Closeable {
                               @NotNull String javaCode,
                               @Nullable PrintWriter writer) throws ClassNotFoundException {
         Class<?> clazz = null;
-        Map<String, Class<?>> loadedClasses;
+        Map<String, WeakReference<Class<?>>> loadedClasses;
         synchronized (loadedClassesMap) {
             loadedClasses = loadedClassesMap.get(classLoader);
             if (loadedClasses == null)
                 loadedClassesMap.put(classLoader, loadedClasses = new LinkedHashMap<>());
-            else
-                clazz = loadedClasses.get(className);
+            else {
+                final WeakReference<Class<?>> clazzWeakReference = loadedClasses.get(className);
+                if (clazzWeakReference == null || clazzWeakReference.get() == null) {
+                    loadedClasses.remove(className);
+                } else {
+                    clazz = clazzWeakReference.get();
+                }
+            }
         }
         PrintWriter printWriter = (writer == null ? DEFAULT_WRITER : writer);
         if (clazz != null)
@@ -181,12 +188,12 @@ public class CachedCompiler implements Closeable {
 
                 Class<?> clazz2 = CompilerUtils.defineClass(classLoader, className2, bytes);
                 synchronized (loadedClassesMap) {
-                    loadedClasses.put(className2, clazz2);
+                    loadedClasses.put(className2, new WeakReference<>(clazz2));
                 }
             }
         }
         synchronized (loadedClassesMap) {
-            loadedClasses.put(className, clazz = classLoader.loadClass(className));
+            loadedClasses.put(className, new WeakReference<>(clazz = classLoader.loadClass(className)));
         }
         return clazz;
     }
