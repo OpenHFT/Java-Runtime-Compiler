@@ -33,7 +33,7 @@ import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /**
@@ -42,11 +42,15 @@ import java.util.Arrays;
 public enum CompilerUtils {
     ; // none
     public static final boolean DEBUGGING = isDebug();
+    /**
+     * Singleton {@link CachedCompiler}. Uses default {@code javac} options of
+     * {@link CachedCompiler#CachedCompiler(File, File)}, and does not write {@code .java}
+     * source files and {@code .class} files to the file system.
+     */
     public static final CachedCompiler CACHED_COMPILER = new CachedCompiler(null, null);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CompilerUtils.class);
     private static final Method DEFINE_CLASS_METHOD;
-    private static final Charset UTF_8 = Charset.forName("UTF-8");
     private static final String JAVA_CLASS_PATH = "java.class.path";
     static JavaCompiler s_compiler;
     static StandardJavaFileManager s_standardJavaFileManager;
@@ -160,7 +164,7 @@ public enum CompilerUtils {
      */
     public static Class<?> defineClass(@Nullable ClassLoader classLoader, @NotNull String className, @NotNull byte[] bytes) {
         try {
-            return (Class) DEFINE_CLASS_METHOD.invoke(classLoader, className, bytes, 0, bytes.length);
+            return (Class<?>) DEFINE_CLASS_METHOD.invoke(classLoader, className, bytes, 0, bytes.length);
         } catch (IllegalAccessException e) {
             throw new AssertionError(e);
         } catch (InvocationTargetException e) {
@@ -173,7 +177,7 @@ public enum CompilerUtils {
         if (resourceName.startsWith("="))
             return resourceName.substring(1);
         StringWriter sw = new StringWriter();
-        Reader isr = new InputStreamReader(getInputStream(resourceName), UTF_8);
+        Reader isr = new InputStreamReader(getInputStream(resourceName), StandardCharsets.UTF_8);
         try {
             char[] chars = new char[8 * 1024];
             int len;
@@ -187,11 +191,7 @@ public enum CompilerUtils {
 
     @NotNull
     private static String decodeUTF8(@NotNull byte[] bytes) {
-        try {
-            return new String(bytes, UTF_8.name());
-        } catch (UnsupportedEncodingException e) {
-            throw new AssertionError(e);
-        }
+        return new String(bytes, StandardCharsets.UTF_8);
     }
 
     @Nullable
@@ -230,11 +230,7 @@ public enum CompilerUtils {
 
     @NotNull
     private static byte[] encodeUTF8(@NotNull String text) {
-        try {
-            return text.getBytes(UTF_8.name());
-        } catch (UnsupportedEncodingException e) {
-            throw new AssertionError(e);
-        }
+        return text.getBytes(StandardCharsets.UTF_8);
     }
 
     public static boolean writeBytes(@NotNull File file, @NotNull byte[] bytes) {
