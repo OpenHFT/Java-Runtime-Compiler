@@ -22,12 +22,12 @@
     <parent>
         <groupId>net.openhft</groupId>
         <artifactId>java-parent-pom</artifactId>
-        <version>1.26.0</version>
-        <relativePath/>
+        <version>1.27ea0-SNAPSHOT</version>
+        <relativePath />
     </parent>
 
     <artifactId>compiler</artifactId>
-    <version>2.26ea1-SNAPSHOT</version>
+    <version>2.27ea0-SNAPSHOT</version>
     <packaging>bundle</packaging>
 
     <name>OpenHFT/Java-Runtime-Compiler</name>
@@ -39,7 +39,7 @@
             <dependency>
                 <groupId>net.openhft</groupId>
                 <artifactId>third-party-bom</artifactId>
-                <version>3.26.0</version>
+                <version>3.27ea0-SNAPSHOT</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -134,6 +134,7 @@
                 <extensions>true</extensions>
                 <configuration>
                     <instructions>
+                        <Automatic-Module-Name>${project.groupId}.${project.artifactId}</Automatic-Module-Name>
                         <Bundle-SymbolicName>${project.groupId}.${project.artifactId}</Bundle-SymbolicName>
                         <Bundle-Name>OpenHFT :: ${project.artifactId}</Bundle-Name>
                         <Bundle-Version>${project.version}</Bundle-Version>
