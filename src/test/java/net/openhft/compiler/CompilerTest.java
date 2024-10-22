@@ -64,6 +64,7 @@ public class CompilerTest extends TestCase {
                 new CachedCompiler(new File(parent, "target/generated-test-sources"), new File(parent, "target/test-classes")) :
                 CompilerUtils.CACHED_COMPILER;
 
+        // Text to be used in the generated class, including the current date.
         String text = "generated test " + new Date();
         try {
             final Class<?> aClass =

@@ -39,6 +39,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+/**
+ * This class is a custom implementation of JavaFileManager used for managing Java file objects
+ * and class loaders. It provides additional functionalities to handle in-memory compilation.
+ */
 public class MyJavaFileManager implements JavaFileManager {
     private static final Logger LOG = LoggerFactory.getLogger(MyJavaFileManager.class);
     private final static Unsafe unsafe;
@@ -67,46 +71,117 @@ public class MyJavaFileManager implements JavaFileManager {
     // synchronizing due to ConcurrentModificationException
     private final Map<String, CloseableByteArrayOutputStream> buffers = Collections.synchronizedMap(new LinkedHashMap<>());
 
+    /**
+     * Constructs a MyJavaFileManager with the specified StandardJavaFileManager.
+     *
+     * @param fileManager The StandardJavaFileManager to be used
+     */
     public MyJavaFileManager(StandardJavaFileManager fileManager) {
         this.fileManager = fileManager;
     }
 
+    /**
+     * Lists the locations for modules. This method is synchronized due to potential thread safety issues.
+     *
+     * @param location The location to list modules for
+     * @return An iterable of sets of locations
+     */
     // Apparently, this method might not be thread-safe.
     // See https://github.com/OpenHFT/Java-Runtime-Compiler/issues/85
     public synchronized Iterable<Set<Location>> listLocationsForModules(final Location location) {
         return invokeNamedMethodIfAvailable(location, "listLocationsForModules");
     }
 
+    /**
+     * Infers the module name for a given location. This method is synchronized due to potential thread safety issues.
+     *
+     * @param location The location to infer the module name for
+     * @return The inferred module name
+     */
     // Apparently, this method might not be thread-safe.
     // See https://github.com/OpenHFT/Java-Runtime-Compiler/issues/85
     public synchronized String inferModuleName(final Location location) {
         return invokeNamedMethodIfAvailable(location, "inferModuleName");
     }
 
+    /**
+     * Gets the class loader for a given location.
+     *
+     * @param location The location to get the class loader for
+     * @return The class loader for the location
+     */
     public ClassLoader getClassLoader(Location location) {
         return fileManager.getClassLoader(location);
     }
 
+    /**
+     * Lists JavaFileObjects for a given location, package name, and kind. This method is synchronized due to potential
+     * thread safety issues.
+     *
+     * @param location    The location to list JavaFileObjects for
+     * @param packageName The package name to list JavaFileObjects for
+     * @param kinds       The kinds of JavaFileObjects to list
+     * @param recurse     Whether to recurse into subdirectories
+     * @return An iterable of JavaFileObjects
+     * @throws IOException If an I/O error occurs
+     */
     public synchronized Iterable<JavaFileObject> list(Location location, String packageName, Set<Kind> kinds, boolean recurse) throws IOException {
         return fileManager.list(location, packageName, kinds, recurse);
     }
 
+    /**
+     * Infers the binary name for a given JavaFileObject.
+     *
+     * @param location The location of the file
+     * @param file     The JavaFileObject to infer the binary name for
+     * @return The binary name of the file
+     */
     public String inferBinaryName(Location location, JavaFileObject file) {
         return fileManager.inferBinaryName(location, file);
     }
 
+    /**
+     * Checks if two FileObjects refer to the same file.
+     *
+     * @param a The first FileObject
+     * @param b The second FileObject
+     * @return true if the FileObjects refer to the same file, false otherwise
+     */
     public boolean isSameFile(FileObject a, FileObject b) {
         return fileManager.isSameFile(a, b);
     }
 
+    /**
+     * Handles an option for the file manager. This method is synchronized due to potential
+     * thread safety issues.
+     *
+     * @param current   The current option to handle
+     * @param remaining The remaining options iterator
+     * @return true if the option was handled, false otherwise
+     */
     public synchronized boolean handleOption(String current, Iterator<String> remaining) {
         return fileManager.handleOption(current, remaining);
     }
 
+    /**
+     * Checks if a given location is supported by the file manager.
+     *
+     * @param location The location to check
+     * @return true if the location is supported, false otherwise
+     */
     public boolean hasLocation(Location location) {
         return fileManager.hasLocation(location);
     }
 
+    /**
+     * Gets a JavaFileObject for input at the specified location and class name.
+     *
+     * @param location  The location to get the JavaFileObject for
+     * @param className The class name of the JavaFileObject
+     * @param kind      The kind of the JavaFileObject
+     * @return The JavaFileObject for input
+     * @throws IOException If an I/O error occurs
+     */
     public JavaFileObject getJavaFileForInput(Location location, String className, Kind kind) throws IOException {
 
         if (location == StandardLocation.CLASS_OUTPUT) {
@@ -129,6 +204,15 @@ public class MyJavaFileManager implements JavaFileManager {
         return fileManager.getJavaFileForInput(location, className, kind);
     }
 
+    /**
+     * Gets a JavaFileObject for output at the specified location and class name.
+     *
+     * @param location  The location to get the JavaFileObject for
+     * @param className The class name of the JavaFileObject
+     * @param kind      The kind of the JavaFileObject
+     * @param sibling   A sibling file object
+     * @return The JavaFileObject for output
+     */
     @NotNull
     public JavaFileObject getJavaFileForOutput(Location location, final String className, Kind kind, FileObject sibling) {
         return new SimpleJavaFileObject(URI.create(className), kind) {
@@ -146,30 +230,71 @@ public class MyJavaFileManager implements JavaFileManager {
         };
     }
 
+    /**
+     * Gets a FileObject for input at the specified location, package name, and relative name.
+     *
+     * @param location     The location to get the FileObject for
+     * @param packageName  The package name of the FileObject
+     * @param relativeName The relative name of the FileObject
+     * @return The FileObject for input
+     * @throws IOException If an I/O error occurs
+     */
     public FileObject getFileForInput(Location location, String packageName, String relativeName) throws IOException {
         return fileManager.getFileForInput(location, packageName, relativeName);
     }
 
+    /**
+     * Gets a FileObject for output at the specified location, package name, and relative name.
+     *
+     * @param location     The location to get the FileObject for
+     * @param packageName  The package name of the FileObject
+     * @param relativeName The relative name of the FileObject
+     * @param sibling      A sibling file object
+     * @return The FileObject for output
+     * @throws IOException If an I/O error occurs
+     */
     public FileObject getFileForOutput(Location location, String packageName, String relativeName, FileObject sibling) throws IOException {
         return fileManager.getFileForOutput(location, packageName, relativeName, sibling);
     }
 
+    /**
+     * Flushes the file manager. This implementation does nothing.
+     */
     public void flush() {
         // Do nothing
     }
 
+    /**
+     * Closes the file manager.
+     *
+     * @throws IOException If an I/O error occurs
+     */
     public void close() throws IOException {
         fileManager.close();
     }
 
+    /**
+     * Checks if the specified option is supported by the file manager.
+     *
+     * @param option The option to check
+     * @return The number of arguments the option takes, or -1 if the option is not supported
+     */
     public int isSupportedOption(String option) {
         return fileManager.isSupportedOption(option);
     }
 
+    /**
+     * Clears the buffers used for storing compiled class byte code.
+     */
     public void clearBuffers() {
         buffers.clear();
     }
 
+    /**
+     * Gets all buffers containing compiled class byte code.
+     *
+     * @return A map of class names to byte arrays containing the compiled class byte code
+     */
     @NotNull
     public Map<String, byte[]> getAllBuffers() {
         Map<String, byte[]> ret = new LinkedHashMap<>(buffers.size() * 2);
@@ -203,6 +328,14 @@ public class MyJavaFileManager implements JavaFileManager {
         return ret;
     }
 
+    /**
+     * Invokes a named method on the file manager if it is available.
+     *
+     * @param location The location to pass to the method
+     * @param name     The name of the method to invoke
+     * @param <T>      The return type of the method
+     * @return The result of invoking the method
+     */
     @SuppressWarnings("unchecked")
     private <T> T invokeNamedMethodIfAvailable(final Location location, final String name) {
         final Method[] methods = fileManager.getClass().getDeclaredMethods();
