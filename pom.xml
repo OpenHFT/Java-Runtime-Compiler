@@ -212,17 +212,6 @@
             </build>
         </profile>
     </profiles>
-  <distributionManagement>
-    <repository>
-      <id>chronicle-enterprise-release</id>
-      <url>https://nexus.chronicle.software/content/repositories/releases</url>
-    </repository>
-    <snapshotRepository>
-      <id>chronicle-enterprise-snapshots</id>
-      <url>https://nexus.chronicle.software/content/repositories/snapshots</url>
-    </snapshotRepository>
-  </distributionManagement>
-  
     <scm>
         <url>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git</url>
         <connection>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git</connection>
