@@ -25,12 +25,17 @@ import org.junit.Test;
 
 import java.io.*;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.tools.Diagnostic;
 
 public class CompilerTest extends TestCase {
     static final File parent;
@@ -47,8 +52,30 @@ public class CompilerTest extends TestCase {
         }
     }
 
+    private CachedCompiler compiler;
+    private URLClassLoader classLoader;
+
+    @Override
+    protected void setUp() throws Exception {
+        // Create new compiler and class loader to prevent tests from affecting each other
+        compiler = new CachedCompiler(null, null);
+        classLoader = new URLClassLoader(new URL[0]);
+    }
+
+    @Override
+    protected void tearDown() throws Exception {
+        compiler.close();
+        classLoader.close();
+    }
+
     public static void main(String[] args) throws Throwable {
-        new CompilerTest().test_compiler();
+        CompilerTest compilerTest = new CompilerTest();
+        try {
+            compilerTest.setUp();
+            compilerTest.test_compiler();
+        } finally {
+            compilerTest.tearDown();
+        }
     }
 
     public void test_compiler() throws Throwable {
@@ -62,7 +89,7 @@ public class CompilerTest extends TestCase {
         // this writes the file to disk only when debugging is enabled.
         CachedCompiler cc = CompilerUtils.DEBUGGING ?
                 new CachedCompiler(new File(parent, "target/generated-test-sources"), new File(parent, "target/test-classes")) :
-                CompilerUtils.CACHED_COMPILER;
+                compiler;
 
         String text = "generated test " + new Date();
         try {
@@ -109,9 +136,7 @@ public class CompilerTest extends TestCase {
         }
     }
 
-    public void test_fromFile()
-            throws ClassNotFoundException, IOException, IllegalAccessException, InstantiationException,
-            NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
+    public void test_fromFile() throws Exception {
         Class<?> clazz = CompilerUtils.loadFromResource("eg.FooBarTee2", "eg/FooBarTee2.jcf");
         // turn off System.out
         PrintStream out = System.out;
@@ -121,7 +146,7 @@ public class CompilerTest extends TestCase {
                 public void write(int b) throws IOException {
                 }
             }));
-            final Constructor stringConstructor = clazz.getConstructor(String.class);
+            final Constructor<?> stringConstructor = clazz.getConstructor(String.class);
             long start = 0;
             for (int i = -RUNS / 10; i < RUNS; i++) {
                 if (i == 0) start = System.nanoTime();
@@ -160,12 +185,14 @@ public class CompilerTest extends TestCase {
                 }
             }));
 
-            CompilerUtils.CACHED_COMPILER.loadFromJava(
-                    getClass().getClassLoader(), "TestClass", "clazz TestClass {}",
+            compiler.loadFromJava(
+                    classLoader, "TestClass", "clazz TestClass {}",
                     new PrintWriter(writer));
             fail("Should have failed to compile");
         } catch (ClassNotFoundException e) {
-            // expected
+            // Should have been enhanced with additional details
+            assertTrue(e.getMessage().contains("Compilation errors"));
+            assertTrue(e.getCause() instanceof ClassNotFoundException);
         } finally {
             System.setOut(out);
             System.setErr(err);
@@ -205,8 +232,8 @@ public class CompilerTest extends TestCase {
                 }
             }));
 
-            CompilerUtils.CACHED_COMPILER.loadFromJava(
-                    getClass().getClassLoader(), "TestClass", "class TestClass {}",
+            compiler.loadFromJava(
+                    classLoader, "TestClass", "class TestClass {}",
                     new PrintWriter(writer));
         } finally {
             System.setOut(out);
@@ -226,6 +253,47 @@ public class CompilerTest extends TestCase {
         final PrintStream err = System.err;
         final StringWriter writer = new StringWriter();
 
+        // Enable lint; otherwise compiler produces no Warning diagnostics but only Note, saying
+        // that `-Xlint:deprecation` should be used
+        final List<String> options = Arrays.asList("-Xlint:deprecation");
+        try (CachedCompiler compiler = new CachedCompiler(null, null, options)) {
+            System.setOut(new PrintStream(new OutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                    usedSysOut.set(true);
+                }
+            }));
+            System.setErr(new PrintStream(new OutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                    usedSysErr.set(true);
+                }
+            }));
+
+            compiler.loadFromJava(
+                    classLoader, "TestClass",
+                    // definition with a mandatory warning for deprecated `Date.getDay()`
+                    "import java.util.Date; class TestClass { int i = new Date().getDay(); }",
+                    new PrintWriter(writer));
+        } finally {
+            System.setOut(out);
+            System.setErr(err);
+        }
+
+        assertFalse(usedSysOut.get());
+        assertFalse(usedSysErr.get());
+        assertEquals("", writer.toString());
+    }
+
+    public void test_settingDiagnosticListenerWithCompilerErrors() throws Exception {
+        final AtomicBoolean usedSysOut = new AtomicBoolean(false);
+        final AtomicBoolean usedSysErr = new AtomicBoolean(false);
+
+        final PrintStream out = System.out;
+        final PrintStream err = System.err;
+        final StringWriter writer = new StringWriter();
+        final List<Diagnostic<?>> diagnostics = Collections.synchronizedList(new ArrayList<>());
+
         try {
             System.setOut(new PrintStream(new OutputStream() {
                 @Override
@@ -240,11 +308,17 @@ public class CompilerTest extends TestCase {
                 }
             }));
 
-            CompilerUtils.CACHED_COMPILER.loadFromJava(
-                    getClass().getClassLoader(), "TestClass",
-                    // definition with a mandatory warning
-                    "class TestClass { int i = new Date().getDay(); }",
-                    new PrintWriter(writer));
+            compiler.loadFromJava(
+                    classLoader,
+                    "TestClass",
+                    "clazz TestClass {}",
+                    new PrintWriter(writer),
+                    diagnostics::add);
+            fail("Should have failed to compile");
+        } catch (ClassNotFoundException e) {
+            // Should have been enhanced with additional details
+            assertTrue(e.getMessage().contains("Compilation errors"));
+            assertTrue(e.getCause() instanceof ClassNotFoundException);
         } finally {
             System.setOut(out);
             System.setErr(err);
@@ -252,7 +326,62 @@ public class CompilerTest extends TestCase {
 
         assertFalse(usedSysOut.get());
         assertFalse(usedSysErr.get());
+        // Diagnostics should have only been reported to listener; not written to output
         assertEquals("", writer.toString());
+
+        assertEquals(1, diagnostics.size());
+        Diagnostic<?> diagnostic = diagnostics.get(0);
+        assertEquals(Diagnostic.Kind.ERROR, diagnostic.getKind());
+        assertEquals(1, diagnostic.getLineNumber());
+    }
+
+    public void test_settingDiagnosticListenerWithWarnings() throws Exception {
+        final AtomicBoolean usedSysOut = new AtomicBoolean(false);
+        final AtomicBoolean usedSysErr = new AtomicBoolean(false);
+
+        final PrintStream out = System.out;
+        final PrintStream err = System.err;
+        final StringWriter writer = new StringWriter();
+        final List<Diagnostic<?>> diagnostics = Collections.synchronizedList(new ArrayList<>());
+
+        // Enable lint; otherwise compiler only produces no Warning diagnostics but only Note, saying
+        // that `-Xlint:unchecked` should be used
+        final List<String> options = Arrays.asList("-Xlint:unchecked");
+        try (CachedCompiler compiler = new CachedCompiler(null, null, options)) {
+            System.setOut(new PrintStream(new OutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                    usedSysOut.set(true);
+                }
+            }));
+            System.setErr(new PrintStream(new OutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                    usedSysErr.set(true);
+                }
+            }));
+
+            compiler.loadFromJava(
+                    classLoader,
+                    "TestClass",
+                    // definition with a mandatory warning for unchecked cast
+                    "import java.util.*; class TestClass { public List<Integer> unsafe(List<?> l) { return (List<Integer>) l; } }",
+                    new PrintWriter(writer),
+                    diagnostics::add);
+        } finally {
+            System.setOut(out);
+            System.setErr(err);
+        }
+
+        assertFalse(usedSysOut.get());
+        assertFalse(usedSysErr.get());
+        // Diagnostics should have only been reported to listener; not written to output
+        assertEquals("", writer.toString());
+
+        assertEquals(1, diagnostics.size());
+        Diagnostic<?> diagnostic = diagnostics.get(0);
+        assertEquals(Diagnostic.Kind.MANDATORY_WARNING, diagnostic.getKind());
+        assertEquals(1, diagnostic.getLineNumber());
     }
 
     public void test_compilerErrorsDoNotBreakNextCompilations() throws Exception {
@@ -261,21 +390,23 @@ public class CompilerTest extends TestCase {
 
         // cause a compiler error
         try {
-            CompilerUtils.CACHED_COMPILER.loadFromJava(
-                    getClass().getClassLoader(), "X", "clazz X {}", quietWriter);
+            compiler.loadFromJava(
+                    classLoader, "X", "clazz X {}", quietWriter);
             fail("Should have failed to compile");
         } catch (ClassNotFoundException e) {
-            // expected
+            // Should have been enhanced with additional details
+            assertTrue(e.getMessage().contains("Compilation errors"));
+            assertTrue(e.getCause() instanceof ClassNotFoundException);
         }
 
         // ensure next class can be compiled and used
-        Class<?> testClass = CompilerUtils.CACHED_COMPILER.loadFromJava(
-                getClass().getClassLoader(), "S", "class S {" +
+        Class<?> testClass = compiler.loadFromJava(
+                classLoader, "S", "class S {" +
                         "public static final String s = \"ok\";}");
 
-        Callable callable = (Callable)
-                CompilerUtils.CACHED_COMPILER.loadFromJava(
-                                getClass().getClassLoader(), "OtherClass",
+        Callable<?> callable = (Callable<?>)
+                compiler.loadFromJava(
+                                classLoader, "OtherClass",
                                 "import java.util.concurrent.Callable; " +
                                         "public class OtherClass implements Callable<String> {" +
                                         "public String call() { return S.s; }}")
@@ -284,6 +415,19 @@ public class CompilerTest extends TestCase {
 
         assertEquals("S", testClass.getName());
         assertEquals("ok", callable.call());
+    }
+
+    public void test_compilerErrorsButLoadingDifferentClass() throws Exception {
+        // quieten the compiler output
+        PrintWriter quietWriter = new PrintWriter(new StringWriter());
+
+        // TODO: Should this throw an exception due to the compilation error nonetheless to be less
+        // error-prone for users, even if loading class would succeed?
+        Class<?> testClass = compiler.loadFromJava(classLoader,
+                // Load other class which is unaffected by compilation error
+                String.class.getName(),
+                "clazz X {}", quietWriter);
+        assertSame(String.class, testClass);
     }
 
     @Test
