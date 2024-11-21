@@ -41,6 +41,7 @@ import static net.openhft.compiler.CompilerUtils.*;
 @SuppressWarnings("StaticNonFinalField")
 public class CachedCompiler implements Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(CachedCompiler.class);
+    /** Writes to {@link System#err} */
     private static final PrintWriter DEFAULT_WRITER = new PrintWriter(System.err);
     private static final List<String> DEFAULT_OPTIONS = Arrays.asList("-g", "-nowarn");
 
@@ -57,16 +58,28 @@ public class CachedCompiler implements Closeable {
 
     private final ConcurrentMap<String, JavaFileObject> javaFileObjects = new ConcurrentHashMap<>();
 
+    /**
+     * Delegates to {@link #CachedCompiler(File, File, List)} with default {@code javac} compilation
+     * options {@code -g} (generate debug information) and {@code -nowarn}.
+     */
     public CachedCompiler(@Nullable File sourceDir, @Nullable File classDir) {
         this(sourceDir, classDir, DEFAULT_OPTIONS);
     }
 
+    /**
+     * @param sourceDir where to write {@code .java} source code files to be compiled; {@code null}
+     *      to not write them to the file system
+     * @param classDir where to write compiled {@code .class} files; {@code null} to not write them
+     *      to the file system
+     * @param options {@code javac} compilation options
+     */
     public CachedCompiler(@Nullable File sourceDir, @Nullable File classDir, @NotNull List<String> options) {
         this.sourceDir = sourceDir;
         this.classDir = classDir;
         this.options = options;
     }
 
+    @Override
     public void close() {
         try {
             for (MyJavaFileManager fileManager : fileManagerMap.values()) {
@@ -77,67 +90,58 @@ public class CachedCompiler implements Closeable {
         }
     }
 
+    /**
+     * Delegates to {@link #loadFromJava(ClassLoader, String, String, PrintWriter, DiagnosticListener)}.
+     * <ul>
+     *   <li>The class loader of {@link CachedCompiler} is used for defining and loading the class
+     *   <li>Only error diagnostics are collected, and are written to {@link System#err}
+     * </ul>
+     */
     public Class<?> loadFromJava(@NotNull String className, @NotNull String javaCode) throws ClassNotFoundException {
         return loadFromJava(getClass().getClassLoader(), className, javaCode, DEFAULT_WRITER);
     }
 
+    /**
+     * Delegates to {@link #loadFromJava(ClassLoader, String, String, PrintWriter, DiagnosticListener)}.
+     * Only error diagnostics are collected, and are written to {@link System#err}.
+     */
     public Class<?> loadFromJava(@NotNull ClassLoader classLoader,
                               @NotNull String className,
                               @NotNull String javaCode) throws ClassNotFoundException {
         return loadFromJava(classLoader, className, javaCode, DEFAULT_WRITER);
     }
 
-    @NotNull
-    Map<String, byte[]> compileFromJava(@NotNull String className, @NotNull String javaCode, MyJavaFileManager fileManager) {
-        return compileFromJava(className, javaCode, DEFAULT_WRITER, fileManager);
+    /**
+     * Delegates to {@link #loadFromJava(ClassLoader, String, String, PrintWriter, DiagnosticListener)}.
+     * Only error diagnostics are collected, and are written to {@code writer}.
+     */
+    public Class<?> loadFromJava(@NotNull ClassLoader classLoader,
+            @NotNull String className,
+            @NotNull String javaCode,
+            @Nullable PrintWriter writer) throws ClassNotFoundException {
+        return loadFromJava(classLoader, className, javaCode, writer, null);
     }
 
-    @NotNull
-    Map<String, byte[]> compileFromJava(@NotNull String className,
-                                        @NotNull String javaCode,
-                                        final @NotNull PrintWriter writer,
-                                        MyJavaFileManager fileManager) {
-        Iterable<? extends JavaFileObject> compilationUnits;
-        if (sourceDir != null) {
-            String filename = className.replaceAll("\\.", '\\' + File.separator) + ".java";
-            File file = new File(sourceDir, filename);
-            writeText(file, javaCode);
-            if (s_standardJavaFileManager == null)
-                s_standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
-            compilationUnits = s_standardJavaFileManager.getJavaFileObjects(file);
-
-        } else {
-            javaFileObjects.put(className, new JavaSourceFromString(className, javaCode));
-            compilationUnits = new ArrayList<>(javaFileObjects.values()); // To prevent CME from compiler code
-        }
-        // reuse the same file manager to allow caching of jar files
-        boolean ok = s_compiler.getTask(writer, fileManager, new DiagnosticListener<JavaFileObject>() {
-            @Override
-            public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
-                if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
-                    writer.println(diagnostic);
-                }
-            }
-        }, options, null, compilationUnits).call();
-
-        if (!ok) {
-            // compilation error, so we want to exclude this file from future compilation passes
-            if (sourceDir == null)
-                javaFileObjects.remove(className);
-
-            // nothing to return due to compiler error
-            return Collections.emptyMap();
-        } else {
-            Map<String, byte[]> result = fileManager.getAllBuffers();
-
-            return result;
-        }
-    }
-
+    /**
+     * Gets a previously compiled and loaded class, or compiles the given Java code and
+     * loads the class.
+     *
+     * @param classLoader class loader for defining and loading the class
+     * @param className binary name of the class to load, for example {@code com.example.MyClass$Nested}
+     * @param javaCode Java code to compile, in case the class had not been compiled and loaded before
+     * @param writer writer for compilation information and diagnostics (should be thread-safe);
+     *      when {@code null} defaults to writing to {@link System#err}
+     * @param diagnosticListener listener for diagnostics emitted by the compiler (should be thread-safe);
+     *      when {@code null}, error diagnostics are written to the {@code writer}, other diagnostics are ignored
+     * @return the loaded class
+     * @throws ClassNotFoundException if compiling or loading the class failed; inspect {@code writer} or
+     *      {@code diagnosticListener} for additional details
+     */
     public Class<?> loadFromJava(@NotNull ClassLoader classLoader,
                               @NotNull String className,
                               @NotNull String javaCode,
-                              @Nullable PrintWriter writer) throws ClassNotFoundException {
+                              @Nullable PrintWriter writer,
+                              @Nullable DiagnosticListener<? super JavaFileObject> diagnosticListener) throws ClassNotFoundException {
         Class<?> clazz = null;
         Map<String, Class<?>> loadedClasses;
         synchronized (loadedClassesMap) {
@@ -147,9 +151,21 @@ public class CachedCompiler implements Closeable {
             else
                 clazz = loadedClasses.get(className);
         }
-        PrintWriter printWriter = (writer == null ? DEFAULT_WRITER : writer);
+
         if (clazz != null)
             return clazz;
+
+        PrintWriter printWriter = writer == null ? DEFAULT_WRITER : writer;
+        if (diagnosticListener == null) {
+            diagnosticListener = new DiagnosticListener<JavaFileObject>() {
+                @Override
+                public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
+                    if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
+                        printWriter.println(diagnostic);
+                    }
+                }
+            };
+        }
 
         MyJavaFileManager fileManager = fileManagerMap.get(classLoader);
         if (fileManager == null) {
@@ -157,7 +173,7 @@ public class CachedCompiler implements Closeable {
             fileManager = getFileManager(standardJavaFileManager);
             fileManagerMap.put(classLoader, fileManager);
         }
-        final Map<String, byte[]> compiled = compileFromJava(className, javaCode, printWriter, fileManager);
+        final Map<String, byte[]> compiled = compileFromJava(className, javaCode, printWriter, diagnosticListener, fileManager);
         for (Map.Entry<String, byte[]> entry : compiled.entrySet()) {
             String className2 = entry.getKey();
             synchronized (loadedClassesMap) {
@@ -189,6 +205,42 @@ public class CachedCompiler implements Closeable {
             loadedClasses.put(className, clazz = classLoader.loadClass(className));
         }
         return clazz;
+    }
+
+    @NotNull
+    Map<String, byte[]> compileFromJava(@NotNull String className,
+                                        @NotNull String javaCode,
+                                        @NotNull PrintWriter writer,
+                                        @NotNull DiagnosticListener<? super JavaFileObject> diagnosticListener,
+                                        MyJavaFileManager fileManager) {
+        Iterable<? extends JavaFileObject> compilationUnits;
+        if (sourceDir != null) {
+            String filename = className.replaceAll("\\.", '\\' + File.separator) + ".java";
+            File file = new File(sourceDir, filename);
+            writeText(file, javaCode);
+            if (s_standardJavaFileManager == null)
+                s_standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
+            compilationUnits = s_standardJavaFileManager.getJavaFileObjects(file);
+
+        } else {
+            javaFileObjects.put(className, new JavaSourceFromString(className, javaCode));
+            compilationUnits = new ArrayList<>(javaFileObjects.values()); // To prevent CME from compiler code
+        }
+        // reuse the same file manager to allow caching of jar files
+        boolean ok = s_compiler.getTask(writer, fileManager, diagnosticListener, options, null, compilationUnits).call();
+
+        if (!ok) {
+            // compilation error, so we want to exclude this file from future compilation passes
+            if (sourceDir == null)
+                javaFileObjects.remove(className);
+
+            // nothing to return due to compiler error
+            return Collections.emptyMap();
+        } else {
+            Map<String, byte[]> result = fileManager.getAllBuffers();
+
+            return result;
+        }
     }
 
     private @NotNull MyJavaFileManager getFileManager(StandardJavaFileManager fm) {
