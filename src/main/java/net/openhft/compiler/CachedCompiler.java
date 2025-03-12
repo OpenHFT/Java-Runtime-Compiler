@@ -34,6 +34,7 @@ import java.io.PrintWriter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static net.openhft.compiler.CompilerUtils.*;
@@ -189,6 +190,22 @@ public class CachedCompiler implements Closeable {
             loadedClasses.put(className, clazz = classLoader.loadClass(className));
         }
         return clazz;
+    }
+
+
+    /**
+     * Update the file manager for a specific class loader.
+     * <br>
+     * Will do nothing if no file manager is found for the class loader.
+     *
+     * @param classLoader The class loader to update the file manager for.
+     * @param updateFileManager The consumer to update the file manager.
+     */
+    public void updateFileManagerForClassLoader(ClassLoader classLoader, Consumer<MyJavaFileManager> updateFileManager) {
+        MyJavaFileManager fileManager = fileManagerMap.get(classLoader);
+        if (fileManager != null) {
+            updateFileManager.accept(fileManager);
+        }
     }
 
     private @NotNull MyJavaFileManager getFileManager(StandardJavaFileManager fm) {
