@@ -19,7 +19,13 @@
 package eg.components;
 
 interface Bar {
+    /**
+     * The {@code Tee} component injected into the bar.
+     */
     Tee getTee();
 
+    /**
+     * The integer value supplied when the bar was constructed.
+     */
     int getI();
 }
