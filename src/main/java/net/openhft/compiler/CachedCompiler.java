@@ -39,14 +39,24 @@ import java.util.function.Function;
 
 import static net.openhft.compiler.CompilerUtils.*;
 
-@SuppressWarnings("StaticNonFinalField")
+/**
+ * Manages in-memory compilation with an optional cache. When directories are
+ * supplied to the constructors, source and class files are also written to
+ * disk to aid debugging. Call {@link #close()} once finished and use
+ * {@link #updateFileManagerForClassLoader(ClassLoader, java.util.function.Consumer)}
+ * to tune a specific loader.
+ */
 public class CachedCompiler implements Closeable {
+    /** Logger for compilation activity. */
     private static final Logger LOG = LoggerFactory.getLogger(CachedCompiler.class);
+    /** Writer used when no alternative is supplied. */
     private static final PrintWriter DEFAULT_WRITER = new PrintWriter(System.err);
+    /** Default compiler flags including debug symbols. */
     private static final List<String> DEFAULT_OPTIONS = Arrays.asList("-g", "-nowarn");
 
     private final Map<ClassLoader, Map<String, Class<?>>> loadedClassesMap = Collections.synchronizedMap(new WeakHashMap<>());
     private final Map<ClassLoader, MyJavaFileManager> fileManagerMap = Collections.synchronizedMap(new WeakHashMap<>());
+    /** Optional testing hook to replace the file manager implementation. */
     public Function<StandardJavaFileManager, MyJavaFileManager> fileManagerOverride;
 
     @Nullable
@@ -58,16 +68,36 @@ public class CachedCompiler implements Closeable {
 
     private final ConcurrentMap<String, JavaFileObject> javaFileObjects = new ConcurrentHashMap<>();
 
+    /**
+     * Create a compiler that optionally writes sources and classes to the given
+     * directories. When {@code sourceDir} or {@code classDir} is not null, the
+     * corresponding files are written for debugging purposes.
+     */
     public CachedCompiler(@Nullable File sourceDir, @Nullable File classDir) {
         this(sourceDir, classDir, DEFAULT_OPTIONS);
     }
 
-    public CachedCompiler(@Nullable File sourceDir, @Nullable File classDir, @NotNull List<String> options) {
+    /**
+     * Create a compiler with explicit compiler options. Directories behave as in
+     * {@link #CachedCompiler(File, File)} and allow inspection of generated
+     * output.
+     *
+     * @param sourceDir where sources are dumped when not null
+     * @param classDir  where class files are dumped when not null
+     * @param options   additional flags passed to the Java compiler
+     */
+    public CachedCompiler(@Nullable File sourceDir,
+                          @Nullable File classDir,
+                          @NotNull List<String> options) {
         this.sourceDir = sourceDir;
         this.classDir = classDir;
         this.options = options;
     }
 
+    /**
+     * Close any file managers created by this compiler.
+     * Normally called when the instance is discarded.
+     */
     public void close() {
         try {
             for (MyJavaFileManager fileManager : fileManagerMap.values()) {
@@ -78,21 +108,62 @@ public class CachedCompiler implements Closeable {
         }
     }
 
+    /**
+     * Compile the supplied source and load the class using this instance's
+     * class loader. Successfully compiled classes are cached for reuse.
+     *
+     * @param className expected binary name of the class
+     * @param javaCode  source code to compile
+     * @return the loaded class instance
+     * @throws ClassNotFoundException if the compiled class cannot be defined
+     */
     public Class<?> loadFromJava(@NotNull String className, @NotNull String javaCode) throws ClassNotFoundException {
         return loadFromJava(getClass().getClassLoader(), className, javaCode, DEFAULT_WRITER);
     }
 
+    /**
+     * Compile the source using the supplied class loader. Cached classes are
+     * stored per loader key.
+     *
+     * @param classLoader loader to define the class with
+     * @param className   expected binary name
+     * @param javaCode    source code to compile
+     * @return the loaded class instance
+     * @throws ClassNotFoundException if definition fails
+     */
     public Class<?> loadFromJava(@NotNull ClassLoader classLoader,
                               @NotNull String className,
                               @NotNull String javaCode) throws ClassNotFoundException {
         return loadFromJava(classLoader, className, javaCode, DEFAULT_WRITER);
     }
 
+    /**
+     * Compile source code into byte arrays using the provided file manager.
+     * Results are cached and reused on subsequent calls when compilation
+     * succeeds.
+     *
+     * @param className name of the primary class
+     * @param javaCode  source to compile
+     * @param fileManager manager responsible for storing the compiled output
+     * @return map of class names to compiled bytecode
+     */
     @NotNull
-    Map<String, byte[]> compileFromJava(@NotNull String className, @NotNull String javaCode, MyJavaFileManager fileManager) {
+    Map<String, byte[]> compileFromJava(@NotNull String className,
+                                        @NotNull String javaCode,
+                                        MyJavaFileManager fileManager) {
         return compileFromJava(className, javaCode, DEFAULT_WRITER, fileManager);
     }
 
+    /**
+     * Compile source using the given writer and file manager. The resulting
+     * byte arrays are cached for the life of this compiler instance.
+     *
+     * @param className name of the primary class
+     * @param javaCode  source to compile
+     * @param writer    destination for diagnostic output
+     * @param fileManager file manager used to collect compiled classes
+     * @return map of class names to compiled bytecode
+     */
     @NotNull
     Map<String, byte[]> compileFromJava(@NotNull String className,
                                         @NotNull String javaCode,
@@ -134,7 +205,17 @@ public class CachedCompiler implements Closeable {
             return result;
         }
     }
-
+    /**
+     * Compile and load using a specific class loader and writer. The
+     * compilation result is cached against the loader for future calls.
+     *
+     * @param classLoader loader to define the class with
+     * @param className   expected binary name
+     * @param javaCode    source code to compile
+     * @param writer      destination for diagnostic messages, may be null
+     * @return the loaded class instance
+     * @throws ClassNotFoundException if definition fails
+     */
     public Class<?> loadFromJava(@NotNull ClassLoader classLoader,
                               @NotNull String className,
                               @NotNull String javaCode,
@@ -194,12 +275,11 @@ public class CachedCompiler implements Closeable {
 
 
     /**
-     * Update the file manager for a specific class loader.
-     * <br>
-     * Will do nothing if no file manager is found for the class loader.
+     * Update the file manager for a specific class loader. This is mainly a
+     * testing utility and is ignored when no manager exists for the loader.
      *
-     * @param classLoader The class loader to update the file manager for.
-     * @param updateFileManager The consumer to update the file manager.
+     * @param classLoader      the class loader to update
+     * @param updateFileManager function applying the update
      */
     public void updateFileManagerForClassLoader(ClassLoader classLoader, Consumer<MyJavaFileManager> updateFileManager) {
         MyJavaFileManager fileManager = fileManagerMap.get(classLoader);
