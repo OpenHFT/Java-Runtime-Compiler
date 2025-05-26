@@ -37,8 +37,9 @@ public class FooBarTee {
 
         copy = new BarImpl(tee, 555);
 
-        // you should see the current date here after synchronisation.
-        foo = new Foo(bar, copy, "generated test Tue Aug 11 07:09:54 BST 2015", 5);
+        // ${generatedDate}
+        // Build scripts replace the token with the current date.
+        foo = new Foo(bar, copy, "generated test ${generatedDate}", 5);
     }
 
     public void start() {
