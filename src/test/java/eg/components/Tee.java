@@ -18,6 +18,9 @@
 
 package eg.components;
 
+/**
+ * Simple interface from the examples that exposes a string accessor.
+ */
 interface Tee {
     String getS();
 }
