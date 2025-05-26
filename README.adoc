@@ -12,7 +12,7 @@ image:https://sonarcloud.io/api/project_badges/measure?project=OpenHFT_Java-Runt
 toc::[]
 
 This library lets you feed _plain Java source as a_ `String`, compile it in-memory and
-immediately load the resulting `Class<?>` — perfect for hot-swapping logic while the JVM
+immediately load the resulting `Class<?>` - perfect for hot-swapping logic while the JVM
 is still running.
 
 == 1 Quick-Start
@@ -23,14 +23,14 @@ is still running.
 <dependency>
     <groupId>net.openhft</groupId>
     <artifactId>compiler</artifactId>
-    <version>*{latest}*</version>
+    <version>Look up the most recent version on Maven Central.</version>
 </dependency>
 ----
 
 [source,groovy,subs=+quotes]
 ----
 /* Gradle (Kotlin DSL) */
-implementation("net.openhft:compiler:*{latest}*")
+implementation("net.openhft:compiler:Look up the most recent version on Maven Central.")
 ----
 
 .Example: compile and run a _Runnable_ at runtime
@@ -55,9 +55,13 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 == 2 Installation
 
 - Requires a **full JDK** (8, 11, 17 or 21 LTS), _not_ a slim JRE.
-- On Java 11 + supply these flags (copy–paste safe)::
-`--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
---add-opens=jdk.compiler/com.sun.tools.javac=ALL-UNNAMED`
+- On Java 11 + supply these flags (copy-paste safe):
+
+[source,bash]
+----
+--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+--add-opens=jdk.compiler/com.sun.tools.javac=ALL-UNNAMED
+----
 * Spring-Boot / fat-JAR users
 ** unpack Chronicle jars:
 `bootJar { requiresUnpack("**/chronicle-*.jar") }`
@@ -88,10 +92,9 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 - Hot-swappable *strategy interface* for trading engines
 * Rule-engine: compile business rules implementing `Rule`
 ** Supports validator hook to vet user code
-* Replace reflection: generate POJO accessors, 10 × faster
+* Replace reflection: generate POJO accessors, 10 x faster
 * Off-heap accessors with Chronicle Bytes / Map
 
-Full samples live in the `examples/` directory.
 
 == 5 Operational Notes
 
@@ -106,9 +109,9 @@ Full samples live in the `examples/` directory.
 - *`ToolProvider.getSystemJavaCompiler() == null`*
 - You are running on a JRE; use a JDK.
 - *`ClassNotFoundException: com.sun.tools.javac.api.JavacTool`*
-- tools.jar missing (JDK ≤ 8) or module flags absent (JDK ≥ 11).
+- tools.jar is required on JDK <= 8. Newer JDKs need the `--add-exports` and `--add-opens` flags.
 - Classes never unload
-- Generate with unique `ClassLoader` per version or reuse names.
+- Generate with a unique `ClassLoader` per version so classes can unload; each loader uses Metaspace.
 - Illegal-reflective-access warning
 - Add the `--add-opens` & `--add-exports` flags shown above.
 
@@ -119,5 +122,5 @@ Full samples live in the `examples/` directory.
 
 == 8 Contributing & License
 
-- Fork → feature branch → PR; run `mvn spotless:apply` before pushing.
-* All code under the *Apache License 2.0* – see `LICENSE`.
+- Fork -> feature branch -> PR; run `mvn spotless:apply` before pushing.
+* All code under the *Apache License 2.0* - see `LICENSE`.
