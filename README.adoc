@@ -2,66 +2,122 @@
 Chronicle Software
 :css-signature: demo
 :toc: macro
-:toclevels: 2
-:icons: font
+:source-highlighter: rouge
 
-image:https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler/badge.svg[caption="",link=https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler]
-image:https://javadoc.io/badge2/net.openhft/compiler/javadoc.svg[link="https://www.javadoc.io/doc/net.openhft/compiler/latest/index.html"]
-//image:https://javadoc-badge.appspot.com/net.openhft/compiler.svg?label=javadoc[JavaDoc, link=https://www.javadoc.io/doc/net.openhft/compiler]
-image:https://img.shields.io/github/license/OpenHFT/Java-Runtime-Compiler[GitHub]
+image:https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler/badge.svg[]
+image:https://javadoc.io/badge2/net.openhft/compiler/javadoc.svg[]
 image:https://img.shields.io/badge/release%20notes-subscribe-brightgreen[link="https://chronicle.software/release-notes/"]
-image:https://sonarcloud.io/api/project_badges/measure?project=OpenHFT_Java-Runtime-Compiler&metric=alert_status[link="https://sonarcloud.io/dashboard?id=OpenHFT_Java-Runtime-Compiler"]
+image:https://sonarcloud.io/api/project_badges/measure?project=OpenHFT_Java-Runtime-Compiler&metric=alert_status[]
 
-This takes a String, compiles it and loads it returning you a class from what you built.
-By default it uses the current ClassLoader.
-It supports nested classes, otherwise builds one class at a time.
+toc::[]
 
-== On Maven Central
+This library lets you feed _plain Java source as a_ `String`, compile it in-memory and
+immediately load the resulting `Class<?>` — perfect for hot-swapping logic while the JVM
+is still running.
 
-You can include in your project with
+== 1 Quick-Start
 
-```xml
+[source,xml,subs=+quotes]
+----
+<!-- Maven -->
 <dependency>
     <groupId>net.openhft</groupId>
     <artifactId>compiler</artifactId>
-    <version><!-- The latest version (see above) --></version>
+    <version>*{latest}*</version>
 </dependency>
-```
+----
 
-== Simple example
+[source,groovy,subs=+quotes]
+----
+/* Gradle (Kotlin DSL) */
+implementation("net.openhft:compiler:*{latest}*")
+----
 
-You need a CachedCompiler and access to your JDK's tools.jar.
+.Example: compile and run a _Runnable_ at runtime
+[source,java]
+----
+import net.openhft.compiler.CompilerUtils;
 
-```java
-// dynamically you can call
-String className = "mypackage.MyClass";
-String javaCode = "package mypackage;\n" +
-                 "public class MyClass implements Runnable {\n" +
-                 "    public void run() {\n" +
-                 "        System.out.println(\"Hello World\");\n" +
-                 "    }\n" +
-                 "}\n";
-Class<?> aClass = CompilerUtils.CACHED_COMPILER.loadFromJava(className, javaCode);
-Runnable runner = (Runnable) aClass.newInstance();
-runner.run();
-```
-     
-I suggest making your class implement a KnownInterface of your choice as this will allow you to call/manipulate instances of you generated class.
+String className = "mypackage.MyDynamicClass";
+String src = """
+    package mypackage;
+    public class MyDynamicClass implements Runnable {
+        public void run() {
+            System.out.println("Hello World");
+        }
+    }
+""";
 
-Another more hacky way is to use this to override a class, provided it hasn't been loaded already.  
-This means you can redefine an existing class and provide the methods and fields used match,
-you have compiler redefine a class and code already compiled to use the class will still work.
+Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
+((Runnable) clazz.getDeclaredConstructor().newInstance()).run();
+----
 
-== Using the CachedCompiler.
+== 2 Installation
 
-In this example, you can configure the compiler to write the files to a specific directory when you are in debug mode.
-       
-```java
-private static final CachedCompiler JCC = CompilerUtils.DEBUGGING ?
-                                                   new CachedCompiler(new File(parent, "src/test/java"), new File(parent, "target/compiled")) :
-                                                   CompilerUtils.CACHED_COMPILER;
-```
-     
-By selecting the src directory to match where your IDE looks for those files, it will allow your debugger to set into the code you have generated at runtime.
+- Requires a **full JDK** (8, 11, 17 or 21 LTS), _not_ a slim JRE.
+- On Java 11 + supply these flags (copy–paste safe)::
+`--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+--add-opens=jdk.compiler/com.sun.tools.javac=ALL-UNNAMED`
+* Spring-Boot / fat-JAR users
+** unpack Chronicle jars:
+`bootJar { requiresUnpack("**/chronicle-*.jar") }`
 
-Note: you may need to delete these files if you want to regenerate them.
+== 3 Feature Highlights
+
+|===
+| Feature | Benefit
+
+| In-memory compile & load
+| Hot-swap code without restarting JVM
+
+| CachedCompiler
+| Skips recompilation of unchanged source
+
+| Debug Mode
+| Writes `.java` / `.class` so IDE breakpoints work
+
+| Custom ClassLoader support
+| Isolate plugins or enable class unloading
+
+| Nested-class handling
+| Build helper hierarchy in a single call
+|===
+
+== 4 Advanced Usage & Patterns
+
+- Hot-swappable *strategy interface* for trading engines
+* Rule-engine: compile business rules implementing `Rule`
+** Supports validator hook to vet user code
+* Replace reflection: generate POJO accessors, 10 × faster
+* Off-heap accessors with Chronicle Bytes / Map
+
+Full samples live in the `examples/` directory.
+
+== 5 Operational Notes
+
+- Compile on a background thread at start-up; then swap instances.
+* Re-use class names _or_ child classloaders to control Metaspace.
+** Use `CompilerUtils.DEBUGGING = true` during dev; remember to prune artefacts.
+* SLF4J categories: `net.openhft.compiler` (INFO), compilation errors at ERROR.
+* Micrometer timers/counters: `compiler.compiles`, `compiler.failures`.
+
+== 6 FAQ / Troubleshooting
+
+- *`ToolProvider.getSystemJavaCompiler() == null`*
+- You are running on a JRE; use a JDK.
+- *`ClassNotFoundException: com.sun.tools.javac.api.JavacTool`*
+- tools.jar missing (JDK ≤ 8) or module flags absent (JDK ≥ 11).
+- Classes never unload
+- Generate with unique `ClassLoader` per version or reuse names.
+- Illegal-reflective-access warning
+- Add the `--add-opens` & `--add-exports` flags shown above.
+
+== 7 CI / Build & Test
+
+- GitHub Actions workflow runs `mvn verify`, unit & race-condition tests.
+* Code-coverage report published to SonarCloud badge above.
+
+== 8 Contributing & License
+
+- Fork → feature branch → PR; run `mvn spotless:apply` before pushing.
+* All code under the *Apache License 2.0* – see `LICENSE`.
