@@ -18,6 +18,10 @@
 
 package eg.components;
 
+/**
+ * Sample implementation used for tests.
+ */
+
 public class BarImpl implements Bar {
     final int i;
     final Tee tee;
@@ -27,10 +31,12 @@ public class BarImpl implements Bar {
         this.i = i;
     }
 
+    @Override
     public Tee getTee() {
         return tee;
     }
 
+    @Override
     public int getI() {
         return i;
     }
