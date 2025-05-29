@@ -54,8 +54,8 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 
 == 2 Installation
 
-- Requires a **full JDK** (8, 11, 17 or 21 LTS), _not_ a slim JRE.
-- On Java 11 + supply these flags (copy-paste safe):
+* Requires a **full JDK** (8, 11, 17 or 21 LTS), _not_ a slim JRE.
+* On Java 11 + supply these flags (copy-paste safe):
 
 [source,bash]
 ----
@@ -89,38 +89,38 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 
 == 4 Advanced Usage & Patterns
 
-- Hot-swappable *strategy interface* for trading engines
-* Rule-engine: compile business rules implementing `Rule`
-** Supports validator hook to vet user code
-* Replace reflection: generate POJO accessors, 10 x faster
-* Off-heap accessors with Chronicle Bytes / Map
+* Hot-swappable *strategy interface* for trading engines
+** Rule-engine: compile business rules implementing `Rule`
+*** Supports validator hook to vet user code
+** Replace reflection: generate POJO accessors, 10 x faster
+** Off-heap accessors with Chronicle Bytes / Map
 
 
 == 5 Operational Notes
 
-- Compile on a background thread at start-up; then swap instances.
-* Re-use class names _or_ child classloaders to control Metaspace.
-** Use `CompilerUtils.DEBUGGING = true` during dev; remember to prune artefacts.
-* SLF4J categories: `net.openhft.compiler` (INFO), compilation errors at ERROR.
-* Micrometer timers/counters: `compiler.compiles`, `compiler.failures`.
+* Compile on a background thread at start-up; then swap instances.
+** Re-use class names _or_ child classloaders to control Metaspace.
+*** Use `CompilerUtils.DEBUGGING = true` during dev; remember to prune artefacts.
+** SLF4J categories: `net.openhft.compiler` (INFO), compilation errors at ERROR.
+** Micrometer timers/counters: `compiler.compiles`, `compiler.failures`.
 
 == 6 FAQ / Troubleshooting
 
-- *`ToolProvider.getSystemJavaCompiler() == null`*
-- You are running on a JRE; use a JDK.
-- *`ClassNotFoundException: com.sun.tools.javac.api.JavacTool`*
-- tools.jar is required on JDK <= 8. Newer JDKs need the `--add-exports` and `--add-opens` flags.
-- Classes never unload
-- Generate with a unique `ClassLoader` per version so classes can unload; each loader uses Metaspace.
-- Illegal-reflective-access warning
-- Add the `--add-opens` & `--add-exports` flags shown above.
+* *`ToolProvider.getSystemJavaCompiler() == null`*
+* You are running on a JRE; use a JDK.
+* *`ClassNotFoundException: com.sun.tools.javac.api.JavacTool`*
+* tools.jar is required on JDK <= 8. Newer JDKs need the `--add-exports` and `--add-opens` flags.
+* Classes never unload
+* Generate with a unique `ClassLoader` per version so classes can unload; each loader uses Metaspace.
+* Illegal-reflective-access warning
+* Add the `--add-opens` & `--add-exports` flags shown above.
 
 == 7 CI / Build & Test
 
-- GitHub Actions workflow runs `mvn verify`, unit & race-condition tests.
-* Code-coverage report published to SonarCloud badge above.
+* GitHub Actions workflow runs `mvn verify`, unit & race-condition tests.
+** Code-coverage report published to SonarCloud badge above.
 
 == 8 Contributing & License
 
-- Fork -> feature branch -> PR; run `mvn spotless:apply` before pushing.
-* All code under the *Apache License 2.0* - see `LICENSE`.
+* Fork -> feature branch -> PR; run `mvn spotless:apply` before pushing.
+** All code under the *Apache License 2.0* - see `LICENSE`.

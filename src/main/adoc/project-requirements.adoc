@@ -6,55 +6,55 @@
 
 === Functional (FN)
 
-- JRC-FN-001 :: The library *MUST* compile Java source provided as a `String` and return a `Class<?>` at runtime.
-- JRC-FN-002 :: The public API *MUST* expose a singleton _cached compiler_ capable of avoiding redundant compilations.
-- JRC-FN-003 :: The library *MUST* support the compilation of nested classes contained in the same source unit.
-- JRC-FN-004 :: Callers *MUST* be able to supply a custom `ClassLoader`; default is the current context loader.
-- JRC-FN-005 :: A _debug mode_ *MUST* emit `.java` and `.class` artefacts to configurable directories for IDE inspection.
+JRC-FN-001 :: The library *MUST* compile Java source provided as a `String` and return a `Class<?>` at runtime.
+JRC-FN-002 :: The public API *MUST* expose a singleton _cached compiler_ capable of avoiding redundant compilations.
+JRC-FN-003 :: The library *MUST* support the compilation of nested classes contained in the same source unit.
+JRC-FN-004 :: Callers *MUST* be able to supply a custom `ClassLoader`; default is the current context loader.
+JRC-FN-005 :: A _debug mode_ *MUST* emit `.java` and `.class` artefacts to configurable directories for IDE inspection.
 
 === Non-Functional – Performance (NF-P)
 
-- JRC-NF-P-006 :: First-time compilation of a <1 kLoC class *SHOULD* complete in ≤ 500 ms on a 3 GHz x86-64 CPU.
-- JRC-NF-P-007 :: Steady-state invocation latency of compiled methods *MUST* be within 10 % of statically compiled code.
-- JRC-NF-P-008 :: Peak metaspace growth per 1 000 unique dynamic classes *MUST NOT* exceed 50 MB.
+JRC-NF-P-006 :: First-time compilation of a <1 kLoC class *SHOULD* complete in ≤ 500 ms on a 3 GHz x86-64 CPU.
+JRC-NF-P-007 :: Steady-state invocation latency of compiled methods *MUST* be within 10 % of statically compiled code.
+JRC-NF-P-008 :: Peak metaspace growth per 1 000 unique dynamic classes *MUST NOT* exceed 50 MB.
 
 === Non-Functional – Security (NF-S)
 
-- JRC-NF-S-009 :: The API *MUST* allow callers to plug in a source-code validator to reject untrusted or malicious input.
-- JRC-NF-S-010 :: Compilation *MUST* occur with the permissions of the hosting JVM; the library supplies _no_ elevated privileges.
+JRC-NF-S-009 :: The API *MUST* allow callers to plug in a source-code validator to reject untrusted or malicious input.
+JRC-NF-S-010 :: Compilation *MUST* occur with the permissions of the hosting JVM; the library supplies _no_ elevated privileges.
 
 === Non-Functional – Operability (NF-O)
 
-- JRC-NF-O-011 :: All internal logging *SHALL* use SLF4J at `INFO` or lower; compilation errors log at `ERROR`.
-- JRC-NF-O-012 :: A health-check helper *SHOULD* verify JDK compiler availability and JVM module flags at start-up.
-- JRC-NF-O-013 :: The library *MUST* expose a counter metric for successful and failed compilations.
+JRC-NF-O-011 :: All internal logging *SHALL* use SLF4J at `INFO` or lower; compilation errors log at `ERROR`.
+JRC-NF-O-012 :: A health-check helper *SHOULD* verify JDK compiler availability and JVM module flags at start-up.
+JRC-NF-O-013 :: The library *MUST* expose a counter metric for successful and failed compilations.
 
 === Test / QA (TEST)
 
-- JRC-TEST-014 :: Unit tests *MUST* cover >= 90 % of public API branches, including happy-path and diagnostics.
-- JRC-TEST-015 :: Concurrency tests *MUST* exercise ≥ 64 parallel compile requests without race or deadlock.
-- JRC-TEST-016 :: A benchmark suite *SHOULD* publish compile latency and runtime call performance on CI.
+JRC-TEST-014 :: Unit tests *MUST* cover >= 90 % of public API branches, including happy-path and diagnostics.
+JRC-TEST-015 :: Concurrency tests *MUST* exercise ≥ 64 parallel compile requests without race or deadlock.
+JRC-TEST-016 :: A benchmark suite *SHOULD* publish compile latency and runtime call performance on CI.
 
 === Documentation (DOC)
 
-- JRC-DOC-017 :: The project *MUST* ship a quick-start README with Maven/Gradle snippets and a 20-line example.
-- JRC-DOC-018 :: Javadoc *MUST* be complete for all public types and methods.
-- JRC-DOC-019 :: A sequence diagram *SHOULD* illustrate the compile-and-load flow, including caching.
+JRC-DOC-017 :: The project *MUST* ship a quick-start README with Maven/Gradle snippets and a 20-line example.
+JRC-DOC-018 :: Javadoc *MUST* be complete for all public types and methods.
+JRC-DOC-019 :: A sequence diagram *SHOULD* illustrate the compile-and-load flow, including caching.
 
 === Operational (OPS)
 
-- JRC-OPS-020 :: Artifacts *MUST* be published to Maven Central under `net.openhft:compiler`.
-- JRC-OPS-021 :: Release pipelines *MUST* sign artifacts and generate an SBOM.
-- JRC-OPS-023 :: The distribution *MUST* document required JVM flags (`--add-exports`, `--add-opens`) for Java 11-21.
+JRC-OPS-020 :: Artifacts *MUST* be published to Maven Central under `net.openhft:compiler`.
+JRC-OPS-021 :: Release pipelines *MUST* sign artifacts and generate an SBOM.
+JRC-OPS-023 :: The distribution *MUST* document required JVM flags (`--add-exports`, `--add-opens`) for Java 11-21.
 
 === User Experience (UX)
 
-- JRC-UX-024 :: Typical compile-and-load code *SHOULD* fit in <= 5 API calls for the simplest case.
-- JRC-UX-025 :: Error diagnostics *SHOULD* surface compiler messages verbatim, grouped by line number.
+JRC-UX-024 :: Typical compile-and-load code *SHOULD* fit in <= 5 API calls for the simplest case.
+JRC-UX-025 :: Error diagnostics *SHOULD* surface compiler messages verbatim, grouped by line number.
 
 === Compliance / Risk (RISK)
 
-- JRC-RISK-026 :: A retention policy *MUST* restrict debug artefact directories to user-configurable paths.
+JRC-RISK-026 :: A retention policy *MUST* restrict debug artefact directories to user-configurable paths.
 
 
 
