@@ -1,7 +1,5 @@
 /*
- * Copyright 2014 Higher Frequency Trading
- *
- *       https://chronicle.software
+ * Copyright 2014-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +16,9 @@
 
 package eg.components;
 
+/** Immutable implementation of {@link Tee}. */
 public class TeeImpl implements Tee {
+    /** `s` is final and set via the constructor. */
     final String s;
 
     public TeeImpl(String s) {

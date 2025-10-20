@@ -1,7 +1,5 @@
 /*
- * Copyright 2014 Higher Frequency Trading
- *
- *       https://chronicle.software
+ * Copyright 2014-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,11 +35,19 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 
 /**
- * This class support loading and debugging Java Classes dynamically.
+ * Provides static utility methods for runtime Java compilation, dynamic class loading,
+ * and class-path manipulation. Acts as the primary entry point for simple compilation tasks.
  */
 public enum CompilerUtils {
     ; // none
+    /**
+     * Indicates whether the JVM started with debugging enabled.
+     */
     public static final boolean DEBUGGING = isDebug();
+
+    /**
+     * In-memory singleton compiler reused across calls.
+     */
     public static final CachedCompiler CACHED_COMPILER = new CachedCompiler(null, null);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CompilerUtils.class);
@@ -51,6 +57,11 @@ public enum CompilerUtils {
     static JavaCompiler s_compiler;
     static StandardJavaFileManager s_standardJavaFileManager;
 
+    /*
+     * Use sun.misc.Unsafe to gain access to ClassLoader.defineClass. This allows
+     * compiled bytecode to be defined without standard reflection checks. The
+     * fallback path calls setAccessible if the internal 'override' field is absent.
+     */
     static {
         try {
             Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
@@ -78,6 +89,12 @@ public enum CompilerUtils {
         return inputArguments.contains("-Xdebug") || inputArguments.contains("-agentlib:jdwp=");
     }
 
+    /**
+     * Reinitialises the cached {@link JavaCompiler}. This method is not thread-safe
+     * and callers must serialise access if used outside static initialisation.
+     *
+     * @throws AssertionError if the compiler classes cannot be loaded.
+     */
     private static void reset() {
         s_compiler = ToolProvider.getSystemJavaCompiler();
         if (s_compiler == null) {
@@ -92,13 +109,14 @@ public enum CompilerUtils {
     }
 
     /**
-     * Load a java class file from the classpath or local file system.
+     * Loads a class from a source file found on the class-path or local file system.
+     * Thread-safe as it delegates to the cached compiler.
      *
      * @param className    expected class name of the outer class.
-     * @param resourceName as the full file name with extension.
-     * @return the outer class loaded.
-     * @throws IOException            the resource could not be loaded.
-     * @throws ClassNotFoundException the class name didn't match or failed to initialise.
+     * @param resourceName full file name with extension.
+     * @return the loaded outer class.
+     * @throws IOException            if the resource cannot be read.
+     * @throws ClassNotFoundException if the compiled class name differs or fails to initialise.
      */
     public static Class<?> loadFromResource(@NotNull String className, @NotNull String resourceName) throws IOException, ClassNotFoundException {
         return loadFromJava(className, readText(resourceName));
@@ -117,10 +135,12 @@ public enum CompilerUtils {
     }
 
     /**
-     * Add a directory to the class path for compiling.  This can be required with custom
+     * Adds a directory to the compilation class-path. This method is not thread-safe
+     * and should be called in a single-threaded context.
      *
-     * @param dir to add.
-     * @return whether the directory was found, if not it is not added either.
+     * @param dir directory to add.
+     * @return {@code true} if the directory exists and was appended.
+     * @throws AssertionError if the compiler cannot be reinitialised.
      */
     public static boolean addClassPath(@NotNull String dir) {
         File file = new File(dir);
@@ -152,11 +172,14 @@ public enum CompilerUtils {
     }
 
     /**
-     * Define a class for byte code.
+     * Defines a class from the supplied bytecode.
+     * Thread-safe and uses {@code Unsafe} to bypass access checks.
      *
-     * @param classLoader to load the class into.
-     * @param className   expected to load.
-     * @param bytes       of the byte code.
+     * @param classLoader class loader to define the class within.
+     * @param className   expected binary name.
+     * @param bytes       compiled bytecode for the class.
+     * @return the defined class instance.
+     * @throws AssertionError if {@code defineClass} cannot be invoked.
      */
     public static Class<?> defineClass(@Nullable ClassLoader classLoader, @NotNull String className, @NotNull byte[] bytes) {
         try {
@@ -169,6 +192,13 @@ public enum CompilerUtils {
         }
     }
 
+    /**
+     * Reads the supplied resource as UTF-8 text. Thread-safe.
+     *
+     * @param resourceName resource path or inline text prefixed with '='.
+     * @return the text contents of the resource.
+     * @throws IOException if an I/O error occurs while reading.
+     */
     private static String readText(@NotNull String resourceName) throws IOException {
         if (resourceName.startsWith("="))
             return resourceName.substring(1);
@@ -224,10 +254,26 @@ public enum CompilerUtils {
             }
     }
 
+    /**
+     * Writes the provided text to the target file using UTF-8.
+     * Not thread-safe and may create or overwrite the file.
+     *
+     * @param file destination file.
+     * @param text text to write.
+     * @return {@code true} if the contents changed.
+     * @throws IllegalStateException if the file cannot be written.
+     */
     public static boolean writeText(@NotNull File file, @NotNull String text) {
         return writeBytes(file, encodeUTF8(text));
     }
 
+    /**
+     * Encodes the given text as UTF-8 bytes.
+     *
+     * @param text value to encode.
+     * @return UTF-8 encoded representation.
+     * @throws AssertionError if the JVM does not support UTF-8.
+     */
     @NotNull
     private static byte[] encodeUTF8(@NotNull String text) {
         try {
@@ -237,6 +283,14 @@ public enum CompilerUtils {
         }
     }
 
+    /**
+     * Writes the given bytes to the specified file. Not thread-safe.
+     *
+     * @param file  destination file.
+     * @param bytes bytes to write.
+     * @return {@code true} if the file contents were updated.
+     * @throws IllegalStateException if the write fails.
+     */
     public static boolean writeBytes(@NotNull File file, @NotNull byte[] bytes) {
         File parentDir = file.getParentFile();
         if (!parentDir.isDirectory() && !parentDir.mkdirs())
@@ -266,6 +320,13 @@ public enum CompilerUtils {
         return true;
     }
 
+    /**
+     * Opens the named resource as an {@link InputStream}. Thread-safe.
+     *
+     * @param filename name of a class-path resource or file; a leading '=' denotes inline text.
+     * @return stream for the resource.
+     * @throws FileNotFoundException if no file or resource exists.
+     */
     @NotNull
     private static InputStream getInputStream(@NotNull String filename) throws FileNotFoundException {
         if (filename.isEmpty()) throw new IllegalArgumentException("The file name cannot be empty.");

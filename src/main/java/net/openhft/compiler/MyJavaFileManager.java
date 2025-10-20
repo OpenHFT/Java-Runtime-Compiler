@@ -1,7 +1,5 @@
 /*
- * Copyright 2014 Higher Frequency Trading
- *
- *       https://chronicle.software
+ * Copyright 2014-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,11 +37,17 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+/**
+ * Custom JavaFileManager that stores compiled class files in memory and exposes
+ * them as byte arrays, while delegating unresolved operations to a wrapped
+ * StandardJavaFileManager.
+ */
 public class MyJavaFileManager implements JavaFileManager {
     private static final Logger LOG = LoggerFactory.getLogger(MyJavaFileManager.class);
     private final static Unsafe unsafe;
     private static final long OVERRIDE_OFFSET;
 
+    // Unsafe sets AccessibleObject.override for speed and JDK-9+ compatibility
     static {
         long offset;
         try {
@@ -67,18 +71,35 @@ public class MyJavaFileManager implements JavaFileManager {
     // synchronizing due to ConcurrentModificationException
     private final Map<String, CloseableByteArrayOutputStream> buffers = Collections.synchronizedMap(new LinkedHashMap<>());
 
+    /**
+     * Create a file manager that delegates to the provided instance while
+     * keeping compiled class bytes in memory.
+     *
+     * @param fileManager the underlying file manager to delegate to
+     */
     public MyJavaFileManager(StandardJavaFileManager fileManager) {
         this.fileManager = fileManager;
     }
 
-    // Apparently, this method might not be thread-safe.
-    // See https://github.com/OpenHFT/Java-Runtime-Compiler/issues/85
+    /**
+     * Invoke {@code listLocationsForModules} reflectively if available.
+     * This method synchronises on the current instance as some JDK
+     * implementations are not thread-safe.
+     *
+     * @param location the location whose modules are requested
+     * @return the module locations or an empty iterable
+     */
     public synchronized Iterable<Set<Location>> listLocationsForModules(final Location location) {
         return invokeNamedMethodIfAvailable(location, "listLocationsForModules");
     }
 
-    // Apparently, this method might not be thread-safe.
-    // See https://github.com/OpenHFT/Java-Runtime-Compiler/issues/85
+    /**
+     * Reflectively call {@code inferModuleName} if present on the delegate.
+     * As above, the call is synchronised for safety on older JDKs.
+     *
+     * @param location the location to inspect
+     * @return the inferred module name or {@code null}
+     */
     public synchronized String inferModuleName(final Location location) {
         return invokeNamedMethodIfAvailable(location, "inferModuleName");
     }
@@ -107,6 +128,10 @@ public class MyJavaFileManager implements JavaFileManager {
         return fileManager.hasLocation(location);
     }
 
+    /**
+     * Return a JavaFileObject backed by the in-memory buffer when the caller
+     * requests a class that has just been compiled to {@link StandardLocation#CLASS_OUTPUT}.
+     */
     public JavaFileObject getJavaFileForInput(Location location, String className, Kind kind) throws IOException {
 
         if (location == StandardLocation.CLASS_OUTPUT) {
@@ -129,6 +154,10 @@ public class MyJavaFileManager implements JavaFileManager {
         return fileManager.getJavaFileForInput(location, className, kind);
     }
 
+    /**
+     * Store compiled class bytes in the internal buffer and return a sink
+     * that writes into it.
+     */
     @NotNull
     public JavaFileObject getJavaFileForOutput(Location location, final String className, Kind kind, FileObject sibling) {
         return new SimpleJavaFileObject(URI.create(className), kind) {
@@ -138,7 +167,7 @@ public class MyJavaFileManager implements JavaFileManager {
                 CloseableByteArrayOutputStream baos = new CloseableByteArrayOutputStream();
 
                 // Reads from getAllBuffers() should be repeatable:
-                // let's ignore compile result in case compilation of this class was triggered before
+                // ignore compile result in case compilation of this class was triggered before
                 buffers.putIfAbsent(className, baos);
 
                 return baos;
@@ -166,10 +195,19 @@ public class MyJavaFileManager implements JavaFileManager {
         return fileManager.isSupportedOption(option);
     }
 
+    /**
+     * Remove all compiled class data from memory.
+     */
     public void clearBuffers() {
         buffers.clear();
     }
 
+    /**
+     * Collect all compiled class buffers, blocking until previous compilation
+     * runs finish.
+     *
+     * @return a map of class name to bytecode
+     */
     @NotNull
     public Map<String, byte[]> getAllBuffers() {
         Map<String, byte[]> ret = new LinkedHashMap<>(buffers.size() * 2);
@@ -203,6 +241,10 @@ public class MyJavaFileManager implements JavaFileManager {
         return ret;
     }
 
+    /**
+     * Invoke a method by name on the delegate if it exists, using {@link Unsafe}
+     * to bypass accessibility checks when required.
+     */
     @SuppressWarnings("unchecked")
     private <T> T invokeNamedMethodIfAvailable(final Location location, final String name) {
         final Method[] methods = fileManager.getClass().getDeclaredMethods();

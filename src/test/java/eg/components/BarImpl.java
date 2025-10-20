@@ -1,7 +1,5 @@
 /*
- * Copyright 2014 Higher Frequency Trading
- *
- *       https://chronicle.software
+ * Copyright 2014-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +16,10 @@
 
 package eg.components;
 
+/**
+ * Sample implementation used for tests.
+ */
+
 public class BarImpl implements Bar {
     final int i;
     final Tee tee;
@@ -27,10 +29,12 @@ public class BarImpl implements Bar {
         this.i = i;
     }
 
+    @Override
     public Tee getTee() {
         return tee;
     }
 
+    @Override
     public int getI() {
         return i;
     }

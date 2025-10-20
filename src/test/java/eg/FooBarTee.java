@@ -1,7 +1,5 @@
 /*
- * Copyright 2014 Higher Frequency Trading
- *
- *       https://chronicle.software
+ * Copyright 2014-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,8 +35,9 @@ public class FooBarTee {
 
         copy = new BarImpl(tee, 555);
 
-        // you should see the current date here after synchronisation.
-        foo = new Foo(bar, copy, "generated test Tue Aug 11 07:09:54 BST 2015", 5);
+        // ${generatedDate}
+        // Build scripts replace the token with the current date.
+        foo = new Foo(bar, copy, "generated test ${generatedDate}", 5);
     }
 
     public void start() {

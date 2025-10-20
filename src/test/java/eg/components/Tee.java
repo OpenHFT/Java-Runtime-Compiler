@@ -1,7 +1,5 @@
 /*
- * Copyright 2014 Higher Frequency Trading
- *
- *       https://chronicle.software
+ * Copyright 2014-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +16,9 @@
 
 package eg.components;
 
+/**
+ * Simple interface from the examples that exposes a string accessor.
+ */
 interface Tee {
     String getS();
 }

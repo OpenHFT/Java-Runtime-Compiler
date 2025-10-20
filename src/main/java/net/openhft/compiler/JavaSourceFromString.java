@@ -1,7 +1,5 @@
 /*
- * Copyright 2014 Higher Frequency Trading
- *
- *       https://chronicle.software
+ * Copyright 2014-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +21,11 @@ import org.jetbrains.annotations.NotNull;
 import javax.tools.SimpleJavaFileObject;
 import java.net.URI;
 
-/* A file object used to represent source coming from a string.
+/*
+ * An internal SimpleJavaFileObject implementation representing Java source
+ * code provided as a String, allowing the Java compiler to read source
+ * directly from memory. Example URI: string:///com/example/Hello.java. The
+ * contents are expected to be UTF-8.
  */
 class JavaSourceFromString extends SimpleJavaFileObject {
     /**
@@ -35,6 +37,7 @@ class JavaSourceFromString extends SimpleJavaFileObject {
      * Constructs a new JavaSourceFromString.
      *
      * @param name the name of the compilation unit represented by this file object
+     *             (annotated with {@link org.jetbrains.annotations.NotNull})
      * @param code the source code for the compilation unit represented by this file object
      */
     JavaSourceFromString(@NotNull String name, String code) {
@@ -43,7 +46,8 @@ class JavaSourceFromString extends SimpleJavaFileObject {
         this.code = code;
     }
 
-    @SuppressWarnings("RefusedBequest")
+    /** Returns the Java source code. */
+    @SuppressWarnings("RefusedBequest") // Directly returns the stored code string, ignoring encoding-error handling because the source is already held in memory.
     @Override
     public CharSequence getCharContent(boolean ignoreEncodingErrors) {
         return code;

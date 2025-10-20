@@ -1,7 +1,5 @@
 /*
- * Copyright 2014 Higher Frequency Trading
- *
- *       https://chronicle.software
+ * Copyright 2014-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +17,13 @@
 package eg.components;
 
 interface Bar {
+    /**
+     * The {@code Tee} component injected into the bar.
+     */
     Tee getTee();
 
+    /**
+     * The integer value supplied when the bar was constructed.
+     */
     int getI();
 }
