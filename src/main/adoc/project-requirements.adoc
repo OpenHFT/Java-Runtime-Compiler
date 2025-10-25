@@ -22,12 +22,14 @@ JRC-NF-P-008 :: Peak metaspace growth per 1 000 unique dynamic classes *MUST NOT
 
 JRC-NF-S-009 :: The API *MUST* allow callers to plug in a source-code validator to reject untrusted or malicious input.
 JRC-NF-S-010 :: Compilation *MUST* occur with the permissions of the hosting JVM; the library supplies _no_ elevated privileges.
+JRC-NF-S-027 :: AI-assisted compilation pipelines *MUST* enforce the layered validation described in link:ai-runtime-guardrails.adoc#JRC-NF-S-027[AI Runtime Guardrails].
 
 === Non-Functional – Operability (NF-O)
 
 JRC-NF-O-011 :: All internal logging *SHALL* use SLF4J at `INFO` or lower; compilation errors log at `ERROR`.
 JRC-NF-O-012 :: A health-check helper *SHOULD* verify JDK compiler availability and JVM module flags at start-up.
 JRC-NF-O-013 :: The library *MUST* expose a counter metric for successful and failed compilations.
+JRC-NF-O-028 :: AI-driven workloads *MUST* publish the telemetry set captured in link:ai-runtime-guardrails.adoc#JRC-NF-O-028[AI Runtime Guardrails].
 
 === Test / QA (TEST)
 
@@ -40,6 +42,7 @@ JRC-TEST-016 :: A benchmark suite *SHOULD* publish compile latency and runtime c
 JRC-DOC-017 :: The project *MUST* ship a quick-start README with Maven/Gradle snippets and a 20-line example.
 JRC-DOC-018 :: Javadoc *MUST* be complete for all public types and methods.
 JRC-DOC-019 :: A sequence diagram *SHOULD* illustrate the compile-and-load flow, including caching.
+JRC-DOC-030 :: The AI prompt-to-deployment workflow *MUST* be documented per link:ai-runtime-guardrails.adoc#JRC-DOC-030[AI Runtime Guardrails].
 
 === Operational (OPS)
 
@@ -55,6 +58,6 @@ JRC-UX-025 :: Error diagnostics *SHOULD* surface compiler messages verbatim, gro
 === Compliance / Risk (RISK)
 
 JRC-RISK-026 :: A retention policy *MUST* restrict debug artefact directories to user-configurable paths.
-
+JRC-RISK-029 :: AI-generated classes *MUST* leave an audit trail as specified in link:ai-runtime-guardrails.adoc#JRC-RISK-029[AI Runtime Guardrails].
 
 

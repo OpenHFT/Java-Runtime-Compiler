@@ -1,0 +1,88 @@
+= Java Runtime Compiler - AI Runtime Guardrails
+:toc:
+:sectnums:
+:lang: en-GB
+
+== Scope
+
+This supplement spells out additional guardrails when Generative AI agents produce
+source code for Chronicle Java Runtime Compiler deployments. It builds on the core
+catalogue in link:project-requirements.adoc[project-requirements.adoc] and mirrors
+the operational playbooks maintained in Chronicle peer projects.
+
+[[JRC-NF-S-027]]
+== JRC-NF-S-027 Apply Layered Validation to AI-Produced Source
+
+Context::
+* Peer services such as Chronicle Algorithms harden AI workloads with multiple policy
+  gates before execution.
+* Model-generated code frequently omits security headers, package scoping or safe
+  imports, raising the risk of invoking platform internals.
+Requirement::
+* Pipelines that hand AI-written source to `CompilerUtils` *MUST* invoke a validator
+  chain enforcing package allow-lists, banned API checks, and static analysis for
+  dangerous constructs (reflection, file or network access).
+* Compilation *MUST* fail fast with actionable diagnostics when validation rejects
+  a unit; callers may present remediation hints back to the agent.
+Verification::
+* CI *MUST* provide tests covering representative rejected snippets and confirming
+  that the validator stops compilation prior to bytecode emission.
+Cross-References::
+* Aligns with `JRC-NF-S-009` in project-requirements and the AI operational controls
+  adopted by Chronicle Algorithms.
+
+[[JRC-NF-O-028]]
+== JRC-NF-O-028 Publish Telemetry for AI-Driven Compilation Pipelines
+
+Context::
+* When AI agents iterate rapidly, operators need visibility similar to the AI
+  performance dashboards in Chronicle Algorithms.
+Requirement::
+* Deployments *MUST* emit metrics tracking compile attempts, validation failures,
+  cache hits, and compilation latency percentiles attributed to the requesting agent
+  or prompt session.
+* Telemetry *SHOULD* integrate with Chronicle Telemetry exporters and surface alerts
+  when failure ratios exceed agreed thresholds.
+Verification::
+* Include automated tests (Chronicle Test Framework or equivalent) asserting that
+  metrics are incremented as expected for successful and rejected compilations.
+Cross-References::
+* Builds on `JRC-NF-O-013` and mirrors the observability agreements in Chronicle
+  Algorithms AI performance targets.
+
+[[JRC-RISK-029]]
+== JRC-RISK-029 Preserve an Audit Trail for Generated Classes
+
+Context::
+* Financial clients demand the same reproducibility guarantees described in Chronicle
+  Algorithms' AI operational controls.
+* Debug artefact retention already exists under `JRC-RISK-026` but needs an AI-aware
+  audit layer.
+Requirement::
+* Each compilation request initiated by an AI agent *MUST* record the prompt hash,
+  validator outcomes, compiler flags, and generated class names in an append-only log.
+* Logs *MUST* be tamper-evident and retained according to customer retention policies.
+Verification::
+* Integration tests *SHOULD* replay logged metadata to regenerate the compiled
+  classes and confirm hash stability.
+Cross-References::
+* Extends `JRC-RISK-026` and aligns with audit requirements outlined in peer decision
+  logs.
+
+[[JRC-DOC-030]]
+== JRC-DOC-030 Document the Prompt-to-Deployment Workflow
+
+Context::
+* Team members reported during documentation reviews that AI change-tracking differs
+  from human-authored patches.
+Requirement::
+* The project *MUST* document an end-to-end workflow explaining how prompts, source
+  validation, compilation, testing, and deployment steps interact for AI changes.
+* Documentation *SHOULD* include failure-handling guidance so human operators can
+  intervene safely.
+Verification::
+* Documentation reviews *MUST* confirm the workflow stays current with pipeline
+  updates; link updates form part of release checklists.
+Cross-References::
+* Extends `JRC-DOC-017` and follows the real-time documentation principle mandated
+  in the company-wide guidance.

@@ -2,6 +2,7 @@
 Chronicle Software
 :css-signature: demo
 :toc: macro
+:sectnums:
 :source-highlighter: rouge
 
 image:https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler/badge.svg[]
@@ -15,7 +16,7 @@ This library lets you feed _plain Java source as a_ `String`, compile it in-memo
 immediately load the resulting `Class<?>` - perfect for hot-swapping logic while the JVM
 is still running.
 
-== 1 Quick-Start
+== Quick-Start
 
 [source,xml,subs=+quotes]
 ----
@@ -52,7 +53,7 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 ((Runnable) clazz.getDeclaredConstructor().newInstance()).run();
 ----
 
-== 2 Installation
+== Installation
 
 * Requires a **full JDK** (8, 11, 17 or 21 LTS), _not_ a slim JRE.
 * On Java 11 + supply these flags (copy-paste safe):
@@ -66,7 +67,7 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 ** unpack Chronicle jars:
 `bootJar { requiresUnpack("**/chronicle-*.jar") }`
 
-== 3 Feature Highlights
+== Feature Highlights
 
 |===
 | Feature | Benefit
@@ -87,7 +88,7 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 | Build helper hierarchy in a single call
 |===
 
-== 4 Advanced Usage & Patterns
+== Advanced Usage & Patterns
 
 * Hot-swappable *strategy interface* for trading engines
 ** Rule-engine: compile business rules implementing `Rule`
@@ -96,7 +97,7 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 ** Off-heap accessors with Chronicle Bytes / Map
 
 
-== 5 Operational Notes
+== Operational Notes
 
 * Compile on a background thread at start-up; then swap instances.
 ** Re-use class names _or_ child classloaders to control Metaspace.
@@ -104,7 +105,12 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 ** SLF4J categories: `net.openhft.compiler` (INFO), compilation errors at ERROR.
 ** Micrometer timers/counters: `compiler.compiles`, `compiler.failures`.
 
-== 6 FAQ / Troubleshooting
+== Documentation & Requirements
+
+* link:src/main/adoc/project-requirements.adoc[Project requirements] outline functional, non-functional, and compliance obligations.
+* link:src/main/adoc/ai-runtime-guardrails.adoc[AI runtime guardrails] detail the additional controls expected when Generative AI agents author code.
+
+== FAQ / Troubleshooting
 
 * *`ToolProvider.getSystemJavaCompiler() == null`*
 * You are running on a JRE; use a JDK.
@@ -115,12 +121,12 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 * Illegal-reflective-access warning
 * Add the `--add-opens` & `--add-exports` flags shown above.
 
-== 7 CI / Build & Test
+== CI / Build & Test
 
 * GitHub Actions workflow runs `mvn verify`, unit & race-condition tests.
 ** Code-coverage report published to SonarCloud badge above.
 
-== 8 Contributing & License
+== Contributing & License
 
 * Fork -> feature branch -> PR; run `mvn spotless:apply` before pushing.
 ** All code under the *Apache License 2.0* - see `LICENSE`.

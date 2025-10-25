@@ -18,7 +18,6 @@ package net.openhft.compiler;
 
 import eg.FooBarTee;
 import eg.components.Foo;
-import junit.framework.TestCase;
 import org.junit.Test;
 
 import java.io.*;
@@ -30,7 +29,9 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class CompilerTest extends TestCase {
+import static org.junit.Assert.*;
+
+public class CompilerTest {
     static final File parent;
     private static final String EG_FOO_BAR_TEE = "eg.FooBarTee";
     private static final int RUNS = 1000 * 1000;
@@ -49,6 +50,7 @@ public class CompilerTest extends TestCase {
         new CompilerTest().test_compiler();
     }
 
+    @Test
     public void test_compiler() throws Throwable {
         // CompilerUtils.setDebug(true);
         // added so the test passes in Maven.
@@ -107,12 +109,14 @@ public class CompilerTest extends TestCase {
         }
     }
 
+    @Test
     public void test_fromFile()
             throws ClassNotFoundException, IOException, IllegalAccessException, InstantiationException,
             NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
         Class<?> clazz = CompilerUtils.loadFromResource("eg.FooBarTee2", "eg/FooBarTee2.jcf");
         // turn off System.out
         PrintStream out = System.out;
+        final String testName = "test_fromFile";
         try {
             System.setOut(new PrintStream(new OutputStream() {
                 @Override
@@ -124,7 +128,7 @@ public class CompilerTest extends TestCase {
             for (int i = -RUNS / 10; i < RUNS; i++) {
                 if (i == 0) start = System.nanoTime();
 
-                Object fooBarTee2 = stringConstructor.newInstance(getName());
+                Object fooBarTee2 = stringConstructor.newInstance(testName);
                 Foo foo = (Foo) clazz.getDeclaredField("foo").get(fooBarTee2);
                 assertNotNull(foo);
                 assertEquals("load java class from file.", foo.s);
@@ -136,6 +140,7 @@ public class CompilerTest extends TestCase {
         }
     }
 
+    @Test
     public void test_settingPrintStreamWithCompilerErrors() throws Exception {
         final AtomicBoolean usedSysOut = new AtomicBoolean(false);
         final AtomicBoolean usedSysErr = new AtomicBoolean(false);
@@ -181,6 +186,7 @@ public class CompilerTest extends TestCase {
         }
     }
 
+    @Test
     public void test_settingPrintStreamWithNoErrors() throws Exception {
         final AtomicBoolean usedSysOut = new AtomicBoolean(false);
         final AtomicBoolean usedSysErr = new AtomicBoolean(false);
@@ -216,6 +222,7 @@ public class CompilerTest extends TestCase {
         assertEquals("", writer.toString());
     }
 
+    @Test
     public void test_settingPrintStreamWithWarnings() throws Exception {
         final AtomicBoolean usedSysOut = new AtomicBoolean(false);
         final AtomicBoolean usedSysErr = new AtomicBoolean(false);
@@ -253,6 +260,7 @@ public class CompilerTest extends TestCase {
         assertEquals("", writer.toString());
     }
 
+    @Test
     public void test_compilerErrorsDoNotBreakNextCompilations() throws Exception {
         // quieten the compiler output
         PrintWriter quietWriter = new PrintWriter(new StringWriter());

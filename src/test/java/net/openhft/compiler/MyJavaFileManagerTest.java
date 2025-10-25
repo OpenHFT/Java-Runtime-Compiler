@@ -1,0 +1,121 @@
+/*
+ * Copyright 2025 chronicle.software
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package net.openhft.compiler;
+
+import org.junit.Test;
+
+import javax.tools.FileObject;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.StandardLocation;
+import javax.tools.ToolProvider;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Set;
+
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+public class MyJavaFileManagerTest {
+
+    @Test
+    public void bufferedClassReturnedFromInput() throws IOException {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull("System compiler required", compiler);
+        try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
+            MyJavaFileManager manager = new MyJavaFileManager(delegate);
+
+            JavaFileObject fileObject = manager.getJavaFileForOutput(StandardLocation.CLASS_OUTPUT,
+                    "example.Buffer", JavaFileObject.Kind.CLASS, null);
+            byte[] payload = new byte[]{1, 2, 3, 4};
+            try (OutputStream os = fileObject.openOutputStream()) {
+                os.write(payload);
+            }
+
+            JavaFileObject in = manager.getJavaFileForInput(StandardLocation.CLASS_OUTPUT,
+                    "example.Buffer", JavaFileObject.Kind.CLASS);
+            try (InputStream is = in.openInputStream()) {
+                byte[] read = is.readAllBytes();
+                assertArrayEquals(payload, read);
+            }
+
+            manager.clearBuffers();
+            assertTrue("Buffers should be cleared", manager.getAllBuffers().isEmpty());
+
+            // Delegate path for non CLASS_OUTPUT locations
+            manager.getJavaFileForInput(StandardLocation.CLASS_PATH,
+                    "java.lang.Object", JavaFileObject.Kind.CLASS);
+        }
+    }
+
+    @Test
+    public void delegatingMethodsPassThroughToUnderlyingManager() throws IOException {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull("System compiler required", compiler);
+        try (StandardJavaFileManager base = compiler.getStandardFileManager(null, null, null)) {
+            MyJavaFileManager manager = new MyJavaFileManager(base);
+
+            FileObject a = manager.getJavaFileForOutput(StandardLocation.CLASS_OUTPUT, "example.A", JavaFileObject.Kind.CLASS, null);
+            FileObject b = manager.getJavaFileForOutput(StandardLocation.CLASS_OUTPUT, "example.B", JavaFileObject.Kind.CLASS, null);
+            manager.isSameFile(a, b);
+
+            manager.getFileForInput(StandardLocation.CLASS_PATH, "java/lang", "Object.class");
+            manager.getFileForOutput(StandardLocation.CLASS_OUTPUT, "example", "Dummy.class", null);
+
+            manager.close();
+        }
+    }
+
+    @Test
+    public void listLocationsForModulesAndInferModuleNameDeferToDelegate() throws IOException {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull("System compiler required", compiler);
+        try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
+            MyJavaFileManager manager = new MyJavaFileManager(delegate);
+            Iterable<Set<javax.tools.JavaFileManager.Location>> locations =
+                    manager.listLocationsForModules(StandardLocation.SYSTEM_MODULES);
+            // The call should be safe even when the iterable is empty.
+            for (Set<javax.tools.JavaFileManager.Location> ignored : locations) {
+                // no-op
+            }
+            // inferModuleName may return null depending on the JDK, but should not throw.
+            manager.inferModuleName(StandardLocation.CLASS_PATH);
+        }
+    }
+
+    @Test
+    public void invokeNamedMethodHandlesMissingMethods() throws Exception {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull("System compiler required", compiler);
+        try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
+            MyJavaFileManager manager = new MyJavaFileManager(delegate);
+            java.lang.reflect.Method method = MyJavaFileManager.class.getDeclaredMethod(
+                    "invokeNamedMethodIfAvailable", javax.tools.JavaFileManager.Location.class, String.class);
+            method.setAccessible(true);
+            try {
+                method.invoke(manager, StandardLocation.CLASS_PATH, "nonExistingMethod");
+                fail("Expected UnsupportedOperationException when method is absent");
+            } catch (java.lang.reflect.InvocationTargetException expected) {
+                assertTrue(expected.getCause() instanceof UnsupportedOperationException);
+            }
+        }
+    }
+}

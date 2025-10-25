@@ -1,0 +1,117 @@
+/*
+ * Copyright 2025 chronicle.software
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package net.openhft.compiler;
+
+import org.junit.Test;
+
+import javax.tools.JavaCompiler;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.ToolProvider;
+import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+public class CachedCompilerAdditionalTest {
+
+    @Test
+    public void compileFromJavaReturnsBytecode() throws Exception {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull("System compiler required", compiler);
+
+        try (StandardJavaFileManager standardManager = compiler.getStandardFileManager(null, null, null)) {
+            CachedCompiler cachedCompiler = new CachedCompiler(null, null);
+            MyJavaFileManager fileManager = new MyJavaFileManager(standardManager);
+            Map<String, byte[]> classes = cachedCompiler.compileFromJava(
+                    "coverage.Sample",
+                    "package coverage; public class Sample { public int value() { return 42; } }",
+                    fileManager);
+            byte[] bytes = classes.get("coverage.Sample");
+            assertNotNull(bytes);
+            assertTrue(bytes.length > 0);
+        }
+    }
+
+    @Test
+    public void compileFromJavaReturnsEmptyMapOnFailure() throws Exception {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull("System compiler required", compiler);
+        try (StandardJavaFileManager standardManager = compiler.getStandardFileManager(null, null, null)) {
+            CachedCompiler cachedCompiler = new CachedCompiler(null, null);
+            MyJavaFileManager fileManager = new MyJavaFileManager(standardManager);
+            Map<String, byte[]> classes = cachedCompiler.compileFromJava(
+                    "coverage.Broken",
+                    "package coverage; public class Broken { this does not compile }",
+                    fileManager);
+            assertTrue("Broken source should not produce classes", classes.isEmpty());
+        }
+    }
+
+    @Test
+    public void updateFileManagerForClassLoaderInvokesConsumer() throws Exception {
+        CachedCompiler compiler = new CachedCompiler(null, null);
+        ClassLoader loader = new ClassLoader() {
+        };
+        compiler.loadFromJava(loader, "coverage.UpdateTarget", "package coverage; public class UpdateTarget {}");
+
+        AtomicBoolean invoked = new AtomicBoolean(false);
+        compiler.updateFileManagerForClassLoader(loader, fm -> invoked.set(true));
+        assertTrue("Consumer should be invoked when manager exists", invoked.get());
+    }
+
+    @Test
+    public void updateFileManagerNoOpWhenClassLoaderUnknown() {
+        CachedCompiler compiler = new CachedCompiler(null, null);
+        AtomicBoolean invoked = new AtomicBoolean(false);
+        compiler.updateFileManagerForClassLoader(new ClassLoader() {
+        }, fm -> invoked.set(true));
+        assertTrue("Consumer should not be invoked when manager missing", !invoked.get());
+    }
+
+    @Test
+    public void closeClosesAllManagedFileManagers() throws Exception {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull("System compiler required", compiler);
+        CachedCompiler cachedCompiler = new CachedCompiler(null, null);
+        AtomicBoolean closed = new AtomicBoolean(false);
+        cachedCompiler.fileManagerOverride = standard -> new TrackingFileManager(standard, closed);
+
+        ClassLoader loader = new ClassLoader() {
+        };
+        cachedCompiler.loadFromJava(loader, "coverage.CloseTarget", "package coverage; public class CloseTarget {}");
+        cachedCompiler.close();
+        assertTrue("Close should propagate to file managers", closed.get());
+    }
+
+    private static final class TrackingFileManager extends MyJavaFileManager {
+        private final AtomicBoolean closedFlag;
+
+        TrackingFileManager(StandardJavaFileManager delegate, AtomicBoolean closedFlag) {
+            super(delegate);
+            this.closedFlag = closedFlag;
+        }
+
+        @Override
+        public void close() throws IOException {
+            closedFlag.set(true);
+            super.close();
+        }
+    }
+}
