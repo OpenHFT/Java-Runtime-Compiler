@@ -133,10 +133,15 @@ public class CompilerUtilsIoTest {
     @Test
     public void addClassPathAddsExistingDirectory() throws Exception {
         Path tempDir = Files.createTempDirectory("compiler-utils-classpath");
-        boolean added = CompilerUtils.addClassPath(tempDir.toAbsolutePath().toString());
-        assertTrue("Existing directory should be added", added);
-        boolean second = CompilerUtils.addClassPath(tempDir.toAbsolutePath().toString());
-        assertTrue("Re-adding the same directory should report true because reset always occurs", second);
+        String originalClasspath = System.getProperty("java.class.path");
+        try {
+            boolean added = CompilerUtils.addClassPath(tempDir.toAbsolutePath().toString());
+            assertTrue("Existing directory should be added", added);
+            boolean second = CompilerUtils.addClassPath(tempDir.toAbsolutePath().toString());
+            assertTrue("Re-adding the same directory should report true because reset always occurs", second);
+        } finally {
+            System.setProperty("java.class.path", originalClasspath);
+        }
     }
 
     @Test
