@@ -32,7 +32,15 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * Provides static utility methods for runtime Java compilation, dynamic class loading,
@@ -52,7 +60,7 @@ public enum CompilerUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CompilerUtils.class);
     private static final Method DEFINE_CLASS_METHOD;
-    private static final Charset UTF_8 = Charset.forName("UTF-8");
+    private static final Charset UTF_8 = StandardCharsets.UTF_8;
     private static final String JAVA_CLASS_PATH = "java.class.path";
     static JavaCompiler s_compiler;
     static StandardJavaFileManager s_standardJavaFileManager;
@@ -64,19 +72,38 @@ public enum CompilerUtils {
      */
     static {
         try {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
+            Field theUnsafe = AccessController.doPrivileged((PrivilegedAction<Field>) () -> {
+                try {
+                    Field field = Unsafe.class.getDeclaredField("theUnsafe");
+                    field.setAccessible(true);
+                    return field;
+                } catch (NoSuchFieldException e) {
+                    throw new IllegalStateException(e);
+                }
+            });
             Unsafe u = (Unsafe) theUnsafe.get(null);
-            DEFINE_CLASS_METHOD = ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class, int.class, int.class);
+            DEFINE_CLASS_METHOD = AccessController.doPrivileged((PrivilegedAction<Method>) () -> {
+                try {
+                    return ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class, int.class, int.class);
+                } catch (NoSuchMethodException e) {
+                    throw new IllegalStateException(e);
+                }
+            });
             try {
                 Field f = AccessibleObject.class.getDeclaredField("override");
                 long offset = u.objectFieldOffset(f);
                 u.putBoolean(DEFINE_CLASS_METHOD, offset, true);
             } catch (NoSuchFieldException e) {
-                DEFINE_CLASS_METHOD.setAccessible(true);
+                AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                    DEFINE_CLASS_METHOD.setAccessible(true);
+                    return null;
+                });
             }
-        } catch (NoSuchMethodException | IllegalAccessException | NoSuchFieldException e) {
+        } catch (IllegalAccessException e) {
             throw new AssertionError(e);
+        } catch (IllegalStateException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            throw new AssertionError(cause);
         }
     }
 
@@ -95,16 +122,26 @@ public enum CompilerUtils {
      *
      * @throws AssertionError if the compiler classes cannot be loaded.
      */
-    private static void reset() {
+    private static synchronized void reset() {
         s_compiler = ToolProvider.getSystemJavaCompiler();
         if (s_compiler == null) {
             try {
                 Class<?> javacTool = Class.forName("com.sun.tools.javac.api.JavacTool");
                 Method create = javacTool.getMethod("create");
                 s_compiler = (JavaCompiler) create.invoke(null);
-            } catch (Exception e) {
+            } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                 throw new AssertionError(e);
             }
+        }
+        s_standardJavaFileManager = null;
+    }
+
+    static StandardJavaFileManager standardFileManager() {
+        synchronized (CompilerUtils.class) {
+            if (s_standardJavaFileManager == null) {
+                s_standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
+            }
+            return s_standardJavaFileManager;
         }
     }
 
@@ -143,19 +180,19 @@ public enum CompilerUtils {
      * @throws AssertionError if the compiler cannot be reinitialised.
      */
     public static boolean addClassPath(@NotNull String dir) {
-        File file = new File(dir);
-        if (file.exists()) {
-            String path;
-            try {
-                path = file.getCanonicalPath();
-            } catch (IOException ignored) {
-                path = file.getAbsolutePath();
-            }
-            if (!Arrays.asList(System.getProperty(JAVA_CLASS_PATH).split(File.pathSeparator)).contains(path))
-                System.setProperty(JAVA_CLASS_PATH, System.getProperty(JAVA_CLASS_PATH) + File.pathSeparator + path);
-
-        } else {
+        Path candidate = sanitizePath(dir).toAbsolutePath();
+        if (!Files.exists(candidate)) {
             return false;
+        }
+        String path;
+        try {
+            path = candidate.toRealPath().toString();
+        } catch (IOException e) {
+            path = candidate.toString();
+        }
+        String[] entries = System.getProperty(JAVA_CLASS_PATH).split(File.pathSeparator);
+        if (Arrays.stream(entries).noneMatch(path::equals)) {
+            System.setProperty(JAVA_CLASS_PATH, System.getProperty(JAVA_CLASS_PATH) + File.pathSeparator + path);
         }
         reset();
         return true;
@@ -217,32 +254,30 @@ public enum CompilerUtils {
 
     @NotNull
     private static String decodeUTF8(@NotNull byte[] bytes) {
-        try {
-            return new String(bytes, UTF_8.name());
-        } catch (UnsupportedEncodingException e) {
-            throw new AssertionError(e);
-        }
+        return new String(bytes, UTF_8);
     }
 
     @Nullable
     @SuppressWarnings("ReturnOfNull")
     private static byte[] readBytes(@NotNull File file) {
-        if (!file.exists()) return null;
-        long len = file.length();
-        if (len > Runtime.getRuntime().totalMemory() / 10)
-            throw new IllegalStateException("Attempted to read large file " + file + " was " + len + " bytes.");
-        byte[] bytes = new byte[(int) len];
-        DataInputStream dis = null;
+        Path target = sanitizePath(file.toPath()).toAbsolutePath();
+        if (!Files.exists(target)) return null;
+        long len;
         try {
-            dis = new DataInputStream(new FileInputStream(file));
-            dis.readFully(bytes);
+            len = Files.size(target);
         } catch (IOException e) {
-            close(dis);
-            LOGGER.warn("Unable to read {}", file, e);
-            throw new IllegalStateException("Unable to read file " + file, e);
+            throw new IllegalStateException("Unable to determine size for " + target, e);
         }
-
-        return bytes;
+        if (len > Runtime.getRuntime().totalMemory() / 10)
+            throw new IllegalStateException("Attempted to read large file " + target + " was " + len + " bytes.");
+        byte[] bytes = new byte[(int) len];
+        try (DataInputStream dis = new DataInputStream(new FileInputStream(target.toFile()))) {
+            dis.readFully(bytes);
+            return bytes;
+        } catch (IOException e) {
+            LOGGER.warn("Unable to read {}", target, e);
+            throw new IllegalStateException("Unable to read file " + target, e);
+        }
     }
 
     private static void close(@Nullable Closeable closeable) {
@@ -276,11 +311,7 @@ public enum CompilerUtils {
      */
     @NotNull
     private static byte[] encodeUTF8(@NotNull String text) {
-        try {
-            return text.getBytes(UTF_8.name());
-        } catch (UnsupportedEncodingException e) {
-            throw new AssertionError(e);
-        }
+        return text.getBytes(UTF_8);
     }
 
     /**
@@ -292,30 +323,56 @@ public enum CompilerUtils {
      * @throws IllegalStateException if the write fails.
      */
     public static boolean writeBytes(@NotNull File file, @NotNull byte[] bytes) {
-        File parentDir = file.getParentFile();
-        if (!parentDir.isDirectory() && !parentDir.mkdirs())
-            throw new IllegalStateException("Unable to create directory " + parentDir);
-        // only write to disk if it has changed.
-        File bak = null;
-        if (file.exists()) {
-            byte[] bytes2 = readBytes(file);
-            if (Arrays.equals(bytes, bytes2))
+        Path target = sanitizePath(file.toPath()).toAbsolutePath();
+        Path parent = target.getParent();
+        try {
+            if (parent != null) {
+                if (Files.exists(parent) && !Files.isDirectory(parent)) {
+                    throw new IllegalStateException("Unable to create directory " + parent);
+                }
+                if (Files.notExists(parent)) {
+                    Files.createDirectories(parent);
+                }
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to create directory " + parent, e);
+        }
+        Path backup = null;
+        if (Files.exists(target)) {
+            byte[] existing = readBytes(target.toFile());
+            if (Arrays.equals(bytes, existing)) {
                 return false;
-            bak = new File(parentDir, file.getName() + ".bak");
-            file.renameTo(bak);
+            }
+            backup = parent == null ? target.resolveSibling(target.getFileName() + ".bak")
+                    : parent.resolve(target.getFileName() + ".bak");
+            try {
+                Files.move(target, backup, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                throw new IllegalStateException("Unable to create backup for " + target, e);
+            }
         }
 
-        FileOutputStream fos = null;
         try {
-            fos = new FileOutputStream(file);
-            fos.write(bytes);
+            Files.write(target, bytes);
         } catch (IOException e) {
-            close(fos);
-            LOGGER.warn("Unable to write {} as {}", file, decodeUTF8(bytes), e);
-            file.delete();
-            if (bak != null)
-                bak.renameTo(file);
-            throw new IllegalStateException("Unable to write " + file, e);
+            LOGGER.warn("Unable to write {} as {}", target, decodeUTF8(bytes), e);
+            try {
+                Files.deleteIfExists(target);
+                if (backup != null) {
+                    Files.move(backup, target, StandardCopyOption.REPLACE_EXISTING);
+                }
+            } catch (IOException restoreError) {
+                LOGGER.trace("Failed to restore {} from backup", target, restoreError);
+            }
+            throw new IllegalStateException("Unable to write " + target, e);
+        }
+
+        if (backup != null) {
+            try {
+                Files.deleteIfExists(backup);
+            } catch (IOException e) {
+                LOGGER.trace("Failed to delete backup {}", backup, e);
+            }
         }
         return true;
     }
@@ -336,6 +393,23 @@ public enum CompilerUtils {
         if (is != null) return is;
         InputStream is2 = contextClassLoader.getResourceAsStream('/' + filename);
         if (is2 != null) return is2;
-        return new FileInputStream(filename);
+        Path sanitized = sanitizePath(filename).toAbsolutePath();
+        return new FileInputStream(sanitized.toFile());
+    }
+
+    private static Path sanitizePath(@NotNull String rawPath) {
+        Objects.requireNonNull(rawPath, "path");
+        return sanitizePath(Paths.get(rawPath));
+    }
+
+    private static Path sanitizePath(@NotNull Path path) {
+        Objects.requireNonNull(path, "path");
+        Path normalized = path.normalize();
+        for (Path element : normalized) {
+            if ("..".equals(element.toString())) {
+                throw new IllegalArgumentException("Path traversal attempt for " + path);
+            }
+        }
+        return normalized;
     }
 }

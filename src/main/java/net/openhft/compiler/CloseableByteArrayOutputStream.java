@@ -18,6 +18,7 @@ package net.openhft.compiler;
 
 import java.io.ByteArrayOutputStream;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 /**
  * ByteArrayOutputStream that completes a {@link CompletableFuture} when closed.
@@ -43,6 +44,6 @@ public class CloseableByteArrayOutputStream extends ByteArrayOutputStream {
      * @return future signalling stream closure
      */
     public CompletableFuture<?> closeFuture() {
-        return closeFuture;
+        return closeFuture.thenApply(Function.identity());
     }
 }

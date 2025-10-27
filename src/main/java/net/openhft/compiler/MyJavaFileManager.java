@@ -32,6 +32,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -49,14 +51,21 @@ public class MyJavaFileManager implements JavaFileManager {
 
     // Unsafe sets AccessibleObject.override for speed and JDK-9+ compatibility
     static {
-        long offset;
         try {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            unsafe = (Unsafe) theUnsafe.get(null);
-        } catch (Exception ex) {
-            throw new AssertionError(ex);
+            unsafe = AccessController.doPrivileged((PrivilegedAction<Unsafe>) () -> {
+                try {
+                    Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+                    theUnsafe.setAccessible(true);
+                    return (Unsafe) theUnsafe.get(null);
+                } catch (ReflectiveOperationException e) {
+                    throw new IllegalStateException(e);
+                }
+            });
+        } catch (IllegalStateException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            throw new AssertionError(cause);
         }
+        long offset;
         try {
             Field f = AccessibleObject.class.getDeclaredField("override");
             offset = unsafe.objectFieldOffset(f);
@@ -142,13 +151,7 @@ public class MyJavaFileManager implements JavaFileManager {
                 bytes = buffers.get(className).toByteArray();
             }
             if (success) {
-
-                return new SimpleJavaFileObject(URI.create(className), kind) {
-                    @NotNull
-                    public InputStream openInputStream() {
-                        return new ByteArrayInputStream(bytes);
-                    }
-                };
+                return new InMemoryInputJavaFileObject(className, kind, bytes);
             }
         }
         return fileManager.getJavaFileForInput(location, className, kind);
@@ -160,19 +163,7 @@ public class MyJavaFileManager implements JavaFileManager {
      */
     @NotNull
     public JavaFileObject getJavaFileForOutput(Location location, final String className, Kind kind, FileObject sibling) {
-        return new SimpleJavaFileObject(URI.create(className), kind) {
-            @NotNull
-            public OutputStream openOutputStream() {
-                // CloseableByteArrayOutputStream.closed is used to filter partial results from getAllBuffers()
-                CloseableByteArrayOutputStream baos = new CloseableByteArrayOutputStream();
-
-                // Reads from getAllBuffers() should be repeatable:
-                // ignore compile result in case compilation of this class was triggered before
-                buffers.putIfAbsent(className, baos);
-
-                return baos;
-            }
-        };
+        return new InMemoryOutputJavaFileObject(className, kind, buffers);
     }
 
     public FileObject getFileForInput(Location location, String packageName, String relativeName) throws IOException {
@@ -239,6 +230,40 @@ public class MyJavaFileManager implements JavaFileManager {
         }
 
         return ret;
+    }
+
+    private static final class InMemoryInputJavaFileObject extends SimpleJavaFileObject {
+        private final byte[] bytes;
+
+        InMemoryInputJavaFileObject(String className, Kind kind, byte[] bytes) {
+            super(URI.create(className), kind);
+            this.bytes = bytes;
+        }
+
+        @NotNull
+        @Override
+        public InputStream openInputStream() {
+            return new ByteArrayInputStream(bytes);
+        }
+    }
+
+    private static final class InMemoryOutputJavaFileObject extends SimpleJavaFileObject {
+        private final String className;
+        private final Map<String, CloseableByteArrayOutputStream> buffers;
+
+        InMemoryOutputJavaFileObject(String className, Kind kind, Map<String, CloseableByteArrayOutputStream> buffers) {
+            super(URI.create(className), kind);
+            this.className = className;
+            this.buffers = buffers;
+        }
+
+        @NotNull
+        @Override
+        public OutputStream openOutputStream() {
+            CloseableByteArrayOutputStream baos = new CloseableByteArrayOutputStream();
+            buffers.putIfAbsent(className, baos);
+            return baos;
+        }
     }
 
     /**

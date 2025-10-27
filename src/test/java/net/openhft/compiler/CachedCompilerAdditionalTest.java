@@ -91,7 +91,7 @@ public class CachedCompilerAdditionalTest {
         assertNotNull("System compiler required", compiler);
         CachedCompiler cachedCompiler = new CachedCompiler(null, null);
         AtomicBoolean closed = new AtomicBoolean(false);
-        cachedCompiler.fileManagerOverride = standard -> new TrackingFileManager(standard, closed);
+        cachedCompiler.setFileManagerOverride(standard -> new TrackingFileManager(standard, closed));
 
         ClassLoader loader = new ClassLoader() {
         };
