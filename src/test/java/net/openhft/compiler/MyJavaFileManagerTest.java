@@ -27,7 +27,10 @@ import javax.tools.ToolProvider;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Field;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertNotNull;
@@ -116,6 +119,39 @@ public class MyJavaFileManagerTest {
             } catch (java.lang.reflect.InvocationTargetException expected) {
                 assertTrue(expected.getCause() instanceof UnsupportedOperationException);
             }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void getAllBuffersSkipsEntriesWhenFutureFails() throws Exception {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull("System compiler required", compiler);
+        try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
+            MyJavaFileManager manager = new MyJavaFileManager(delegate);
+            Field buffersField = MyJavaFileManager.class.getDeclaredField("buffers");
+            buffersField.setAccessible(true);
+            Map<String, CloseableByteArrayOutputStream> buffers =
+                    (Map<String, CloseableByteArrayOutputStream>) buffersField.get(manager);
+            FaultyByteArrayOutputStream faulty = new FaultyByteArrayOutputStream();
+            synchronized (buffers) {
+                buffers.put("coverage.Faulty", faulty);
+            }
+            Map<String, byte[]> collected = manager.getAllBuffers();
+            assertTrue("Faulty entries should be skipped when the close future fails", collected.isEmpty());
+        }
+    }
+
+    private static final class FaultyByteArrayOutputStream extends CloseableByteArrayOutputStream {
+        private final CompletableFuture<Void> future = new CompletableFuture<>();
+
+        FaultyByteArrayOutputStream() {
+            future.completeExceptionally(new RuntimeException("faulty"));
+        }
+
+        @Override
+        public CompletableFuture<?> closeFuture() {
+            return future;
         }
     }
 }

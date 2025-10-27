@@ -21,7 +21,14 @@ import org.junit.Test;
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
+import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -98,6 +105,66 @@ public class CachedCompilerAdditionalTest {
         cachedCompiler.loadFromJava(loader, "coverage.CloseTarget", "package coverage; public class CloseTarget {}");
         cachedCompiler.close();
         assertTrue("Close should propagate to file managers", closed.get());
+    }
+
+    @Test
+    public void createDefaultWriterFlushesOnClose() throws Exception {
+        Method factory = CachedCompiler.class.getDeclaredMethod("createDefaultWriter");
+        factory.setAccessible(true);
+        PrintWriter writer = (PrintWriter) factory.invoke(null);
+        writer.println("exercise-default-writer");
+        writer.close(); // ensures the overridden close() path is covered
+    }
+
+    @Test
+    public void writesSourceAndClassFilesWhenDirectoriesProvided() throws Exception {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull("System compiler required", compiler);
+
+        Path sourceDir = Files.createTempDirectory("cached-compiler-src");
+        Path classDir = Files.createTempDirectory("cached-compiler-classes");
+        try {
+            CachedCompiler firstPass = new CachedCompiler(sourceDir.toFile(), classDir.toFile());
+
+            String className = "coverage.FileOutput";
+            String versionOne = "package coverage; public class FileOutput { public String value() { return \"v1\"; } }";
+            ClassLoader loaderOne = new ClassLoader() {
+            };
+            firstPass.loadFromJava(loaderOne, className, versionOne);
+            firstPass.close();
+
+            Path sourceFile = sourceDir.resolve("coverage/FileOutput.java");
+            Path classFile = classDir.resolve("coverage/FileOutput.class");
+            assertTrue("Source file should be emitted", Files.exists(sourceFile));
+            assertTrue("Class file should be emitted", Files.exists(classFile));
+            byte[] firstBytes = Files.readAllBytes(classFile);
+
+            CachedCompiler secondPass = new CachedCompiler(sourceDir.toFile(), classDir.toFile());
+            String versionTwo = "package coverage; public class FileOutput { public String value() { return \"v2\"; } }";
+            ClassLoader loaderTwo = new ClassLoader() {
+            };
+            secondPass.loadFromJava(loaderTwo, className, versionTwo);
+            secondPass.close();
+
+            byte[] updatedBytes = Files.readAllBytes(classFile);
+            assertTrue("Updating the source should change emitted bytecode", !Arrays.equals(firstBytes, updatedBytes));
+
+            Path backupFile = classDir.resolve("coverage/FileOutput.class.bak");
+            assertTrue("Backup should be cleaned up", !Files.exists(backupFile));
+        } finally {
+            deleteRecursively(classDir);
+            deleteRecursively(sourceDir);
+        }
+    }
+
+    private static void deleteRecursively(Path root) throws IOException {
+        if (root == null || Files.notExists(root)) {
+            return;
+        }
+        Files.walk(root)
+                .sorted(Comparator.reverseOrder())
+                .map(Path::toFile)
+                .forEach(File::delete);
     }
 
     private static final class TrackingFileManager extends MyJavaFileManager {
