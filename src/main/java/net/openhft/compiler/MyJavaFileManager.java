@@ -16,6 +16,7 @@
 
 package net.openhft.compiler;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,8 +33,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +43,7 @@ import java.util.concurrent.TimeoutException;
  * them as byte arrays, while delegating unresolved operations to a wrapped
  * StandardJavaFileManager.
  */
+@SuppressFBWarnings(value = "DP_DO_INSIDE_DO_PRIVILEGED", justification = "SecurityManager has been removed; reflective member access is guarded via command-line --add-opens guidance.")
 public class MyJavaFileManager implements JavaFileManager {
     private static final Logger LOG = LoggerFactory.getLogger(MyJavaFileManager.class);
     private final static Unsafe unsafe;
@@ -51,20 +51,15 @@ public class MyJavaFileManager implements JavaFileManager {
 
     // Unsafe sets AccessibleObject.override for speed and JDK-9+ compatibility
     static {
+        Unsafe locatedUnsafe;
         try {
-            unsafe = AccessController.doPrivileged((PrivilegedAction<Unsafe>) () -> {
-                try {
-                    Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-                    theUnsafe.setAccessible(true);
-                    return (Unsafe) theUnsafe.get(null);
-                } catch (ReflectiveOperationException e) {
-                    throw new IllegalStateException(e);
-                }
-            });
-        } catch (IllegalStateException e) {
-            Throwable cause = e.getCause() != null ? e.getCause() : e;
-            throw new AssertionError(cause);
+            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafe.setAccessible(true);
+            locatedUnsafe = (Unsafe) theUnsafe.get(null);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
         }
+        unsafe = locatedUnsafe;
         long offset;
         try {
             Field f = AccessibleObject.class.getDeclaredField("override");

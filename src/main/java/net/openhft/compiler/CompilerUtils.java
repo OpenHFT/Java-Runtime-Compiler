@@ -16,6 +16,7 @@
 
 package net.openhft.compiler;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -37,8 +38,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -46,6 +45,7 @@ import java.util.Objects;
  * Provides static utility methods for runtime Java compilation, dynamic class loading,
  * and class-path manipulation. Acts as the primary entry point for simple compilation tasks.
  */
+@SuppressFBWarnings(value = "DP_DO_INSIDE_DO_PRIVILEGED", justification = "SecurityManager is removed; making reflective members accessible does not require doPrivileged.")
 public enum CompilerUtils {
     ; // none
     /**
@@ -71,40 +71,34 @@ public enum CompilerUtils {
      * fallback path calls setAccessible if the internal 'override' field is absent.
      */
     static {
+        Method defineClassMethod;
         try {
-            Field theUnsafe = AccessController.doPrivileged((PrivilegedAction<Field>) () -> {
-                try {
-                    Field field = Unsafe.class.getDeclaredField("theUnsafe");
-                    field.setAccessible(true);
-                    return field;
-                } catch (NoSuchFieldException e) {
-                    throw new IllegalStateException(e);
-                }
-            });
-            Unsafe u = (Unsafe) theUnsafe.get(null);
-            DEFINE_CLASS_METHOD = AccessController.doPrivileged((PrivilegedAction<Method>) () -> {
-                try {
-                    return ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class, int.class, int.class);
-                } catch (NoSuchMethodException e) {
-                    throw new IllegalStateException(e);
-                }
-            });
+            Field theUnsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafeField.setAccessible(true);
+            Unsafe unsafe = (Unsafe) theUnsafeField.get(null);
+
+            defineClassMethod = ClassLoader.class.getDeclaredMethod("defineClass",
+                    String.class, byte[].class, int.class, int.class);
             try {
-                Field f = AccessibleObject.class.getDeclaredField("override");
-                long offset = u.objectFieldOffset(f);
-                u.putBoolean(DEFINE_CLASS_METHOD, offset, true);
+                Field overrideField = AccessibleObject.class.getDeclaredField("override");
+                long offset = unsafe.objectFieldOffset(overrideField);
+                unsafe.putBoolean(defineClassMethod, offset, true);
             } catch (NoSuchFieldException e) {
-                AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-                    DEFINE_CLASS_METHOD.setAccessible(true);
-                    return null;
-                });
+                try {
+                    defineClassMethod.setAccessible(true);
+                } catch (RuntimeException inaccessible) {
+                    throw new IllegalStateException("Unable to make ClassLoader#defineClass accessible; ensure --add-opens java.base/java.lang=ALL-UNNAMED", inaccessible);
+                }
             }
         } catch (IllegalAccessException e) {
+            throw new AssertionError(e);
+        } catch (NoSuchFieldException | NoSuchMethodException e) {
             throw new AssertionError(e);
         } catch (IllegalStateException e) {
             Throwable cause = e.getCause() != null ? e.getCause() : e;
             throw new AssertionError(cause);
         }
+        DEFINE_CLASS_METHOD = defineClassMethod;
     }
 
     static {
