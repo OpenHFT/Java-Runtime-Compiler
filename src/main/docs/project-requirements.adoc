@@ -23,7 +23,6 @@ JRC-NF-P-008 :: Peak metaspace growth per 1 000 unique dynamic classes *MUST NOT
 JRC-NF-S-009 :: The API *MUST* allow callers to plug in a source-code validator to reject untrusted or malicious input.
 JRC-NF-S-010 :: Compilation *MUST* occur with the permissions of the hosting JVM; the library supplies _no_ elevated privileges.
 
-
 === Non-Functional – Operability (NF-O)
 
 JRC-NF-O-011 :: All internal logging *SHALL* use SLF4J at `INFO` or lower; compilation errors log at `ERROR`.

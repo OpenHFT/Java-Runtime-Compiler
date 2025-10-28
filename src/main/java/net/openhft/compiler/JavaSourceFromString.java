@@ -46,8 +46,11 @@ class JavaSourceFromString extends SimpleJavaFileObject {
         this.code = code;
     }
 
-    /** Returns the Java source code. */
-    @SuppressWarnings("RefusedBequest") // Directly returns the stored code string, ignoring encoding-error handling because the source is already held in memory.
+    /**
+     * Returns the Java source code.
+     */
+    @SuppressWarnings("RefusedBequest")
+    // Directly returns the stored code string, ignoring encoding-error handling because the source is already held in memory.
     @Override
     public CharSequence getCharContent(boolean ignoreEncodingErrors) {
         return code;

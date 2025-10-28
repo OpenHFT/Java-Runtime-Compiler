@@ -25,11 +25,7 @@ import javax.tools.Diagnostic;
 import javax.tools.DiagnosticListener;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
-import java.io.Closeable;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.*;
@@ -49,11 +45,17 @@ import static net.openhft.compiler.CompilerUtils.*;
  * to tune a specific loader.
  */
 public class CachedCompiler implements Closeable {
-    /** Logger for compilation activity. */
+    /**
+     * Logger for compilation activity.
+     */
     private static final Logger LOG = LoggerFactory.getLogger(CachedCompiler.class);
-    /** Writer used when no alternative is supplied. */
+    /**
+     * Writer used when no alternative is supplied.
+     */
     private static final PrintWriter DEFAULT_WRITER = createDefaultWriter();
-    /** Default compiler flags including debug symbols. */
+    /**
+     * Default compiler flags including debug symbols.
+     */
     private static final List<String> DEFAULT_OPTIONS = Arrays.asList("-g", "-nowarn");
     private static final Pattern CLASS_NAME_PATTERN = Pattern.compile("[\\p{Alnum}_$.\\-]+");
     private static final Pattern CLASS_NAME_SEGMENT_PATTERN = Pattern.compile("[\\p{Alnum}_$]+(?:-[\\p{Alnum}_$]+)*");
@@ -144,8 +146,8 @@ public class CachedCompiler implements Closeable {
      * @throws ClassNotFoundException if definition fails
      */
     public Class<?> loadFromJava(@NotNull ClassLoader classLoader,
-                              @NotNull String className,
-                              @NotNull String javaCode) throws ClassNotFoundException {
+                                 @NotNull String className,
+                                 @NotNull String javaCode) throws ClassNotFoundException {
         validateClassName(className);
         return loadFromJava(classLoader, className, javaCode, DEFAULT_WRITER);
     }
@@ -155,8 +157,8 @@ public class CachedCompiler implements Closeable {
      * Results are cached and reused on subsequent calls when compilation
      * succeeds.
      *
-     * @param className name of the primary class
-     * @param javaCode  source to compile
+     * @param className   name of the primary class
+     * @param javaCode    source to compile
      * @param fileManager manager responsible for storing the compiled output
      * @return map of class names to compiled bytecode
      */
@@ -172,9 +174,9 @@ public class CachedCompiler implements Closeable {
      * Compile source using the given writer and file manager. The resulting
      * byte arrays are cached for the life of this compiler instance.
      *
-     * @param className name of the primary class
-     * @param javaCode  source to compile
-     * @param writer    destination for diagnostic output
+     * @param className   name of the primary class
+     * @param javaCode    source to compile
+     * @param writer      destination for diagnostic output
      * @param fileManager file manager used to collect compiled classes
      * @return map of class names to compiled bytecode
      */
@@ -217,6 +219,7 @@ public class CachedCompiler implements Closeable {
             return result;
         }
     }
+
     /**
      * Compile and load using a specific class loader and writer. The
      * compilation result is cached against the loader for future calls.
@@ -229,9 +232,9 @@ public class CachedCompiler implements Closeable {
      * @throws ClassNotFoundException if definition fails
      */
     public Class<?> loadFromJava(@NotNull ClassLoader classLoader,
-                              @NotNull String className,
-                              @NotNull String javaCode,
-                              @Nullable PrintWriter writer) throws ClassNotFoundException {
+                                 @NotNull String className,
+                                 @NotNull String javaCode,
+                                 @Nullable PrintWriter writer) throws ClassNotFoundException {
         Class<?> clazz = null;
         Map<String, Class<?>> loadedClasses;
         synchronized (loadedClassesMap) {
@@ -291,7 +294,7 @@ public class CachedCompiler implements Closeable {
      * Update the file manager for a specific class loader. This is mainly a
      * testing utility and is ignored when no manager exists for the loader.
      *
-     * @param classLoader      the class loader to update
+     * @param classLoader       the class loader to update
      * @param updateFileManager function applying the update
      */
     public void updateFileManagerForClassLoader(ClassLoader classLoader, Consumer<MyJavaFileManager> updateFileManager) {

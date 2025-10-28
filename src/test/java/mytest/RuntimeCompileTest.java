@@ -24,11 +24,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.IntSupplier;
 
 import static org.junit.Assert.assertEquals;
@@ -68,8 +64,8 @@ public class RuntimeCompileTest {
                 "    public void accept(int num) {\n" +
                 "        called.incrementAndGet();\n" +
                 "    }\n");
-        for (int j=0; j<1_000; j++) {
-            largeClass.append("    public void accept"+j+"(int num) {\n" +
+        for (int j = 0; j < 1_000; j++) {
+            largeClass.append("    public void accept" + j + "(int num) {\n" +
                     "        if ((byte) num != num)\n" +
                     "            throw new IllegalArgumentException();\n" +
                     "    }\n");
@@ -85,7 +81,7 @@ public class RuntimeCompileTest {
             final List<Future<?>> futures = new ArrayList<>();
             final CyclicBarrier barrier = new CyclicBarrier(nThreads);
 
-            for (int i=0; i<nThreads; i++) {
+            for (int i = 0; i < nThreads; i++) {
                 final int value = i;
                 futures.add(executor.submit(() -> {
                     try {

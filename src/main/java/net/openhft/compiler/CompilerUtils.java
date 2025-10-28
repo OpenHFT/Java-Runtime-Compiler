@@ -123,7 +123,8 @@ public enum CompilerUtils {
                 Class<?> javacTool = Class.forName("com.sun.tools.javac.api.JavacTool");
                 Method create = javacTool.getMethod("create");
                 s_compiler = (JavaCompiler) create.invoke(null);
-            } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
+                     InvocationTargetException e) {
                 throw new AssertionError(e);
             }
         }

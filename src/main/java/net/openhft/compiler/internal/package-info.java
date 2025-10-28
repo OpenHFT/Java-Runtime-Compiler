@@ -18,8 +18,8 @@
  * This package and any and all sub-packages contains strictly internal classes for this Chronicle library.
  * Internal classes shall <em>never</em> be used directly.
  * <p>
- *  Specifically, the following actions (including, but not limited to) are not allowed
- *  on internal classes and packages:
+ * Specifically, the following actions (including, but not limited to) are not allowed
+ * on internal classes and packages:
  *  <ul>
  *      <li>Casting to</li>
  *      <li>Reflection of any kind</li>
