@@ -60,8 +60,15 @@ public class CachedCompiler implements Closeable {
 
     private final Map<ClassLoader, Map<String, Class<?>>> loadedClassesMap = Collections.synchronizedMap(new WeakHashMap<>());
     private final Map<ClassLoader, MyJavaFileManager> fileManagerMap = Collections.synchronizedMap(new WeakHashMap<>());
-    /** Optional testing hook to replace the file manager implementation. */
-    private volatile Function<StandardJavaFileManager, MyJavaFileManager> fileManagerOverride;
+    /**
+     * Optional testing hook to replace the file manager implementation.
+     * <p>
+     * This field remains {@code public} to preserve binary compatibility with callers that
+     * accessed it directly in previous releases. Prefer {@link #setFileManagerOverride(Function)}
+     * for source-compatible code.
+     */
+    @SuppressWarnings("WeakerAccess")
+    public volatile Function<StandardJavaFileManager, MyJavaFileManager> fileManagerOverride;
 
     @Nullable
     private final File sourceDir;
