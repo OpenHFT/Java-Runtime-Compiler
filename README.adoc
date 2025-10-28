@@ -53,7 +53,7 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 
 == Installation
 
-* Requires a **full JDK** (8, 11, 17 or 21 LTS), _not_ a slim JRE.
+* Requires a *full JDK* (8, 11, 17 or 21 LTS), _not_ a slim JRE.
 * On Java 11 + supply these flags (copy-paste safe):
 
 [source,bash]
@@ -89,7 +89,7 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 
 == Advanced Usage & Patterns
 
-* Hot-swappable *strategy interface* for trading engines
+* Hot-swappable _strategy interface_ for trading engines
 ** Rule-engine: compile business rules implementing `Rule`
 *** Supports validator hook to vet user code
 ** Replace reflection: generate POJO accessors, 10 x faster
@@ -109,9 +109,9 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 
 == FAQ / Troubleshooting
 
-* *`ToolProvider.getSystemJavaCompiler() == null`*
+* _`ToolProvider.getSystemJavaCompiler() == null`_
 * You are running on a JRE; use a JDK.
-* *`ClassNotFoundException: com.sun.tools.javac.api.JavacTool`*
+* _`ClassNotFoundException: com.sun.tools.javac.api.JavacTool`_
 * tools.jar is required on JDK <= 8. Newer JDKs need the `--add-exports` and `--add-opens` flags.
 * Classes never unload
 * Generate with a unique `ClassLoader` per version so classes can unload; each loader uses Metaspace.
@@ -126,4 +126,4 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 == Contributing & License
 
 * Fork -> feature branch -> PR; run `mvn spotless:apply` before pushing.
-** All code under the *Apache License 2.0* - see `LICENSE`.
+** All code under the _Apache License 2.0_ - see `LICENSE`.
