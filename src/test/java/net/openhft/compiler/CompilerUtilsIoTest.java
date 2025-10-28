@@ -178,13 +178,13 @@ public class CompilerUtilsIoTest {
         Method method = CompilerUtils.class.getDeclaredMethod("getInputStream", String.class);
         method.setAccessible(true);
         try (InputStream is = (InputStream) method.invoke(null, "=inline-data")) {
-            String value = new String(is.readAllBytes());
+            String value = new String(readFully(is));
             assertEquals("inline-data", value);
         }
         Path tempFile = Files.createTempFile("compiler-utils-stream", ".txt");
         Files.write(tempFile, "file-data".getBytes(StandardCharsets.UTF_8));
         try (InputStream is = (InputStream) method.invoke(null, tempFile.toString())) {
-            String value = new String(is.readAllBytes());
+            String value = new String(readFully(is));
             assertEquals("file-data", value);
         }
     }
@@ -214,7 +214,7 @@ public class CompilerUtilsIoTest {
         };
         Thread.currentThread().setContextClassLoader(loader);
         try (InputStream is = (InputStream) method.invoke(null, "fallback-resource")) {
-            assertEquals("fallback", new String(is.readAllBytes(), StandardCharsets.UTF_8));
+            assertEquals("fallback", new String(readFully(is), StandardCharsets.UTF_8));
         } finally {
             Thread.currentThread().setContextClassLoader(original);
         }
@@ -248,5 +248,15 @@ public class CompilerUtilsIoTest {
         assertTrue(ex.getCause() instanceof IllegalStateException);
         String message = ex.getCause().getMessage();
         assertTrue(message.contains("Unable to determine size") || message.contains("Unable to read file"));
+    }
+
+    private static byte[] readFully(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] chunk = new byte[1024];
+        int read;
+        while ((read = inputStream.read(chunk)) != -1) {
+            buffer.write(chunk, 0, read);
+        }
+        return buffer.toByteArray();
     }
 }

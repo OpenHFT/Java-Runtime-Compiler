@@ -31,7 +31,7 @@ public class AiRuntimeGuardrailsTest {
         AtomicInteger compileInvocations = new AtomicInteger();
         TelemetryProbe telemetry = new TelemetryProbe();
         GuardrailedCompilerPipeline pipeline = new GuardrailedCompilerPipeline(
-                List.of(
+                Arrays.asList(
                         source -> {
                             // basic guard: ban java.lang.System exit calls
                             if (source.contains("System.exit")) {

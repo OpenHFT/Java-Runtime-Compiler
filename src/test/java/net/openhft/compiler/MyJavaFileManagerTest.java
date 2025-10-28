@@ -18,7 +18,16 @@ package net.openhft.compiler;
 
 import org.junit.Test;
 
-import javax.tools.*;
+import javax.tools.FileObject;
+import javax.tools.ForwardingJavaFileManager;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.StandardLocation;
+import javax.tools.ToolProvider;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -52,7 +61,7 @@ public class MyJavaFileManagerTest {
             JavaFileObject in = manager.getJavaFileForInput(StandardLocation.CLASS_OUTPUT,
                     "example.Buffer", JavaFileObject.Kind.CLASS);
             try (InputStream is = in.openInputStream()) {
-                byte[] read = is.readAllBytes();
+                byte[] read = readFully(is);
                 assertArrayEquals(payload, read);
             }
 
@@ -74,7 +83,7 @@ public class MyJavaFileManagerTest {
             JavaFileObject expected = new SimpleJavaFileObject(URI.create("string:///expected"), JavaFileObject.Kind.CLASS) {
                 @Override
                 public InputStream openInputStream() {
-                    return InputStream.nullInputStream();
+                    return new ByteArrayInputStream(new byte[0]);
                 }
             };
             StandardJavaFileManager proxy = (StandardJavaFileManager) Proxy.newProxyInstance(
@@ -130,14 +139,23 @@ public class MyJavaFileManagerTest {
         assertNotNull("System compiler required", compiler);
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
             MyJavaFileManager manager = new MyJavaFileManager(delegate);
-            Iterable<Set<javax.tools.JavaFileManager.Location>> locations =
-                    manager.listLocationsForModules(StandardLocation.SYSTEM_MODULES);
-            // The call should be safe even when the iterable is empty.
-            for (Set<javax.tools.JavaFileManager.Location> ignored : locations) {
-                // no-op
+            javax.tools.JavaFileManager.Location modulesLocation = resolveSystemModules();
+            if (modulesLocation != null) {
+                try {
+                    Iterable<Set<javax.tools.JavaFileManager.Location>> locations =
+                            manager.listLocationsForModules(modulesLocation);
+                    for (Set<javax.tools.JavaFileManager.Location> ignored : locations) {
+                        // no-op
+                    }
+                } catch (UnsupportedOperationException ignored) {
+                    // Delegate does not expose module support on this JDK.
+                }
             }
-            // inferModuleName may return null depending on the JDK, but should not throw.
-            manager.inferModuleName(StandardLocation.CLASS_PATH);
+            try {
+                manager.inferModuleName(StandardLocation.CLASS_PATH);
+            } catch (UnsupportedOperationException ignored) {
+                // Method not available on older JDKs; acceptable.
+            }
         }
     }
 
@@ -227,5 +245,23 @@ public class MyJavaFileManagerTest {
         public CompletableFuture<?> closeFuture() {
             return future;
         }
+    }
+
+    private static javax.tools.JavaFileManager.Location resolveSystemModules() {
+        try {
+            return StandardLocation.valueOf("SYSTEM_MODULES");
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    private static byte[] readFully(InputStream is) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] chunk = new byte[1024];
+        int read;
+        while ((read = is.read(chunk)) != -1) {
+            buffer.write(chunk, 0, read);
+        }
+        return buffer.toByteArray();
     }
 }
