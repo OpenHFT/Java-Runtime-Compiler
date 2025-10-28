@@ -94,8 +94,8 @@
         <findsecbugs.version>1.14.0</findsecbugs.version>
         <maven-pmd-plugin.version>3.28.0</maven-pmd-plugin.version>
         <jacoco-maven-plugin.version>0.8.14</jacoco-maven-plugin.version>
-        <jacoco.line.coverage>0.8329</jacoco.line.coverage>
-        <jacoco.branch.coverage>0.7636</jacoco.branch.coverage>
+        <jacoco.line.coverage>0.856</jacoco.line.coverage>
+        <jacoco.branch.coverage>0.85</jacoco.branch.coverage>
         <chronicle-quality-rules.version>1.23ea6</chronicle-quality-rules.version>
     </properties>
   
@@ -195,8 +195,8 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <jacoco.line.coverage>0.74</jacoco.line.coverage>
-                <jacoco.branch.coverage>0.65</jacoco.branch.coverage>
+                <jacoco.line.coverage>0.856</jacoco.line.coverage>
+                <jacoco.branch.coverage>0.85</jacoco.branch.coverage>
             </properties>
             <build>
                 <plugins>

@@ -1,0 +1,37 @@
+=== [RC-FN-001] Allow hyphenated descriptor class names
+
+- Date: 2025-10-28
+- Context:
+* The runtime compiler recently introduced stricter validation that rejected binary names containing hyphens.
+* Java reserves `module-info` and `package-info` descriptors, and downstream uses rely on compiling them through the cached compiler.
+* We must prevent injection of directory traversal or shell-sensitive characters while honouring legitimate descriptor forms.
+- Decision Statement:
+* Relax the class name validation to accept hyphenated segments such as `module-info` and `package-info`, while maintaining segment level controls for other characters.
+- Notes/Links:
+* Change implemented in `src/main/java/net/openhft/compiler/CachedCompiler.java`.
+
+=== [RC-TEST-002] Align coverage gate with achieved baseline
+
+- Date: 2025-10-28
+- Context:
+* The enforced JaCoCo minimums were 83 % line and 76 % branch coverage, below both the documentation target and the current test suite capability.
+* Recent test additions raise the baseline to ~85 % line and branch coverage, but still fall short of the historical 90 % goal.
+* Failing builds on the higher 90 % target blocks releases without immediate scope to add more tests.
+- Decision Statement:
+* Increase the JaCoCo enforcement thresholds to 85 % for line and branch coverage so the build reflects the present safety net while keeping headroom for future improvements.
+- **Alternatives Considered:**
+* Retain the 90 % requirement:
+** *Pros:* Preserves the original aspiration.
+** *Cons:* The build fails despite the current suite, causing friction for ongoing work.
+* Keep legacy 83/76 % thresholds:
+** *Pros:* No configuration change needed.
+** *Cons:* Enforcement would lag the actual quality level, risking future regressions.
+- **Rationale for Decision:**
+* Setting the guard at 85 % matches the measurable baseline and ensures regression detection without blocking releases.
+* The documentation and configuration now stay consistent, supporting future increments once more tests land.
+- **Impact & Consequences:**
+* Build pipelines now fail if coverage slips below the new 85 % thresholds.
+* Documentation for requirement JRC-TEST-014 is updated to the same value.
+- Notes/Links:
+* Thresholds maintained in `pom.xml`.
+* Updated requirement: `src/main/docs/project-requirements.adoc`.
