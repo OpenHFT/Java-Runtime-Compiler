@@ -134,6 +134,27 @@ public class CachedCompilerAdditionalTest {
         InvocationTargetException emptySegment = assertThrows(InvocationTargetException.class,
                 () -> validate.invoke(null, "example..impl"));
         assertTrue(emptySegment.getCause() instanceof IllegalArgumentException);
+
+        InvocationTargetException invalidCharacter = assertThrows(InvocationTargetException.class,
+                () -> validate.invoke(null, "example.Invalid?Name"));
+        assertTrue(invalidCharacter.getCause() instanceof IllegalArgumentException);
+    }
+
+    @Test
+    public void safeResolvePreventsPathTraversal() throws Exception {
+        Method method = CachedCompiler.class.getDeclaredMethod("safeResolve", File.class, String.class);
+        method.setAccessible(true);
+        Path root = Files.createTempDirectory("cached-compiler-safe");
+        try {
+            File resolved = (File) method.invoke(null, root.toFile(), "valid/Name.class");
+            assertTrue(resolved.toPath().startsWith(root));
+
+            InvocationTargetException traversal = assertThrows(InvocationTargetException.class,
+                    () -> method.invoke(null, root.toFile(), "../escape"));
+            assertTrue(traversal.getCause() instanceof IllegalArgumentException);
+        } finally {
+            deleteRecursively(root);
+        }
     }
 
     @Test

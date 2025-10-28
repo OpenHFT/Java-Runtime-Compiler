@@ -21,6 +21,7 @@ import org.junit.Test;
 import javax.tools.FileObject;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
@@ -28,9 +29,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
+import java.net.URI;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertNotNull;
@@ -66,6 +71,47 @@ public class MyJavaFileManagerTest {
             // Delegate path for non CLASS_OUTPUT locations
             manager.getJavaFileForInput(StandardLocation.CLASS_PATH,
                     "java.lang.Object", JavaFileObject.Kind.CLASS);
+        }
+    }
+
+    @Test
+    public void getJavaFileForInputDelegatesWhenBufferMissing() throws Exception {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull("System compiler required", compiler);
+        try (StandardJavaFileManager base = compiler.getStandardFileManager(null, null, null)) {
+            AtomicBoolean delegated = new AtomicBoolean(false);
+            JavaFileObject expected = new SimpleJavaFileObject(URI.create("string:///expected"), JavaFileObject.Kind.CLASS) {
+                @Override
+                public InputStream openInputStream() {
+                    return InputStream.nullInputStream();
+                }
+            };
+            StandardJavaFileManager proxy = (StandardJavaFileManager) Proxy.newProxyInstance(
+                    StandardJavaFileManager.class.getClassLoader(),
+                    new Class[]{StandardJavaFileManager.class},
+                    (proxyInstance, method, args) -> {
+                        if ("getJavaFileForInput".equals(method.getName())) {
+                            delegated.set(true);
+                            return expected;
+                        }
+                        try {
+                            return method.invoke(base, args);
+                        } catch (InvocationTargetException e) {
+                            throw e.getCause();
+                        }
+                    });
+            MyJavaFileManager manager = new MyJavaFileManager(proxy);
+            Field buffersField = MyJavaFileManager.class.getDeclaredField("buffers");
+            buffersField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Map<String, CloseableByteArrayOutputStream> buffers =
+                    (Map<String, CloseableByteArrayOutputStream>) buffersField.get(manager);
+            buffers.put("example.KindMismatch", new CloseableByteArrayOutputStream());
+
+            JavaFileObject result = manager.getJavaFileForInput(StandardLocation.CLASS_OUTPUT,
+                    "example.KindMismatch", JavaFileObject.Kind.SOURCE);
+            assertTrue("Delegate should be consulted when buffer missing", delegated.get());
+            assertTrue("Result should match delegate outcome", result == expected);
         }
     }
 
@@ -118,6 +164,43 @@ public class MyJavaFileManagerTest {
                 fail("Expected UnsupportedOperationException when method is absent");
             } catch (java.lang.reflect.InvocationTargetException expected) {
                 assertTrue(expected.getCause() instanceof UnsupportedOperationException);
+            }
+        }
+    }
+
+    @Test
+    public void invokeNamedMethodWrapsInvocationFailures() throws Exception {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull("System compiler required", compiler);
+        try (StandardJavaFileManager base = compiler.getStandardFileManager(null, null, null)) {
+            StandardJavaFileManager proxy = (StandardJavaFileManager) Proxy.newProxyInstance(
+                    StandardJavaFileManager.class.getClassLoader(),
+                    new Class[]{StandardJavaFileManager.class},
+                    (proxyInstance, method, args) -> {
+                        if ("listLocationsForModules".equals(method.getName())) {
+                            throw new InvocationTargetException(new IOException("forced"));
+                        }
+                        try {
+                            return method.invoke(base, args);
+                        } catch (InvocationTargetException e) {
+                            throw e.getCause();
+                        }
+                    });
+            MyJavaFileManager manager = new MyJavaFileManager(proxy);
+            java.lang.reflect.Method method = MyJavaFileManager.class.getDeclaredMethod(
+                    "invokeNamedMethodIfAvailable", javax.tools.JavaFileManager.Location.class, String.class);
+            method.setAccessible(true);
+            try {
+                method.invoke(manager, StandardLocation.CLASS_PATH, "listLocationsForModules");
+                fail("Expected invocation failure to be wrapped");
+            } catch (InvocationTargetException expected) {
+                Throwable cause = expected.getCause();
+                assertTrue("Unexpected cause: " + cause,
+                        cause instanceof UnsupportedOperationException || cause instanceof IOException);
+                if (cause instanceof UnsupportedOperationException) {
+                    Throwable nested = cause.getCause();
+                    assertTrue(nested instanceof IOException || nested instanceof InvocationTargetException);
+                }
             }
         }
     }

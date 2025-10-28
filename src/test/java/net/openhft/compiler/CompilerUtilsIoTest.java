@@ -21,10 +21,12 @@ import org.junit.Test;
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
+import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -172,6 +174,13 @@ public class CompilerUtilsIoTest {
     }
 
     @Test
+    public void closeIgnoresNullReference() throws Exception {
+        Method closeMethod = CompilerUtils.class.getDeclaredMethod("close", Closeable.class);
+        closeMethod.setAccessible(true);
+        closeMethod.invoke(null, new Object[]{null});
+    }
+
+    @Test
     public void getInputStreamSupportsInlineContent() throws Exception {
         Method method = CompilerUtils.class.getDeclaredMethod("getInputStream", String.class);
         method.setAccessible(true);
@@ -185,5 +194,66 @@ public class CompilerUtilsIoTest {
             String value = new String(is.readAllBytes());
             assertEquals("file-data", value);
         }
+    }
+
+    @Test
+    public void getInputStreamRejectsEmptyFilename() throws Exception {
+        Method method = CompilerUtils.class.getDeclaredMethod("getInputStream", String.class);
+        method.setAccessible(true);
+        InvocationTargetException ex = assertThrows(InvocationTargetException.class,
+                () -> method.invoke(null, ""));
+        assertTrue(ex.getCause() instanceof IllegalArgumentException);
+    }
+
+    @Test
+    public void getInputStreamUsesSlashFallback() throws Exception {
+        Method method = CompilerUtils.class.getDeclaredMethod("getInputStream", String.class);
+        method.setAccessible(true);
+        ClassLoader original = Thread.currentThread().getContextClassLoader();
+        ClassLoader loader = new ClassLoader(original) {
+            @Override
+            public InputStream getResourceAsStream(String name) {
+                if ("/fallback-resource".equals(name)) {
+                    return new ByteArrayInputStream("fallback".getBytes(StandardCharsets.UTF_8));
+                }
+                return null;
+            }
+        };
+        Thread.currentThread().setContextClassLoader(loader);
+        try (InputStream is = (InputStream) method.invoke(null, "fallback-resource")) {
+            assertEquals("fallback", new String(is.readAllBytes(), StandardCharsets.UTF_8));
+        } finally {
+            Thread.currentThread().setContextClassLoader(original);
+        }
+    }
+
+    @Test
+    public void sanitizePathPreventsTraversal() throws Exception {
+        Method method = CompilerUtils.class.getDeclaredMethod("sanitizePath", Path.class);
+        method.setAccessible(true);
+        InvocationTargetException ex = assertThrows(InvocationTargetException.class,
+                () -> method.invoke(null, Paths.get("..", "escape")));
+        assertTrue(ex.getCause() instanceof IllegalArgumentException);
+    }
+
+    @Test
+    public void writeBytesCreatesMissingParentDirectories() throws Exception {
+        Path tempDir = Files.createTempDirectory("compiler-utils-parent");
+        Path nested = tempDir.resolve("nested").resolve("file.bin");
+        boolean changed = CompilerUtils.writeBytes(nested.toFile(), new byte[]{10, 20, 30});
+        assertTrue("Path with missing parents should be created", changed);
+        assertTrue(Files.exists(nested));
+    }
+
+    @Test
+    public void readBytesRejectsDirectories() throws Exception {
+        Method readBytes = CompilerUtils.class.getDeclaredMethod("readBytes", File.class);
+        readBytes.setAccessible(true);
+        Path tempDir = Files.createTempDirectory("compiler-utils-dir");
+        InvocationTargetException ex = assertThrows(InvocationTargetException.class,
+                () -> readBytes.invoke(null, tempDir.toFile()));
+        assertTrue(ex.getCause() instanceof IllegalStateException);
+        String message = ex.getCause().getMessage();
+        assertTrue(message.contains("Unable to determine size") || message.contains("Unable to read file"));
     }
 }

@@ -107,9 +107,7 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 
 == Documentation & Requirements
 
-* link:src/main/adoc/project-requirements.adoc[Project requirements] outline functional, non-functional, and compliance obligations.
-* link:src/main/adoc/ai-runtime-workflow.adoc[AI runtime workflow] explains the end-to-end process for AI-authored changes.
-* link:src/main/adoc/ai-runtime-guardrails.adoc[AI runtime guardrails] detail the additional controls expected when Generative AI agents author code.
+* link:src/main/docs/project-requirements.adoc[Project requirements] outline functional, non-functional, and compliance obligations.
 
 == FAQ / Troubleshooting
 
