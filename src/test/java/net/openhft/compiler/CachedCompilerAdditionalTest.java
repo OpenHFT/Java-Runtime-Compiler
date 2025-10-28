@@ -24,6 +24,7 @@ import javax.tools.ToolProvider;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,6 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class CachedCompilerAdditionalTest {
@@ -114,6 +116,24 @@ public class CachedCompilerAdditionalTest {
         PrintWriter writer = (PrintWriter) factory.invoke(null);
         writer.println("exercise-default-writer");
         writer.close(); // ensures the overridden close() path is covered
+    }
+
+    @Test
+    public void validateClassNameAllowsDescriptorForms() throws Exception {
+        Method validate = CachedCompiler.class.getDeclaredMethod("validateClassName", String.class);
+        validate.setAccessible(true);
+
+        validate.invoke(null, "module-info");
+        validate.invoke(null, "example.package-info");
+        validate.invoke(null, "example.deep.package-info");
+
+        InvocationTargetException trailingHyphen = assertThrows(InvocationTargetException.class,
+                () -> validate.invoke(null, "example.Invalid-"));
+        assertTrue(trailingHyphen.getCause() instanceof IllegalArgumentException);
+
+        InvocationTargetException emptySegment = assertThrows(InvocationTargetException.class,
+                () -> validate.invoke(null, "example..impl"));
+        assertTrue(emptySegment.getCause() instanceof IllegalArgumentException);
     }
 
     @Test

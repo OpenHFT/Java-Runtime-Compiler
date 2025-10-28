@@ -55,7 +55,8 @@ public class CachedCompiler implements Closeable {
     private static final PrintWriter DEFAULT_WRITER = createDefaultWriter();
     /** Default compiler flags including debug symbols. */
     private static final List<String> DEFAULT_OPTIONS = Arrays.asList("-g", "-nowarn");
-    private static final Pattern CLASS_NAME_PATTERN = Pattern.compile("[\\p{Alnum}_$.]+");
+    private static final Pattern CLASS_NAME_PATTERN = Pattern.compile("[\\p{Alnum}_$.\\-]+");
+    private static final Pattern CLASS_NAME_SEGMENT_PATTERN = Pattern.compile("[\\p{Alnum}_$]+(?:-[\\p{Alnum}_$]+)*");
 
     private final Map<ClassLoader, Map<String, Class<?>>> loadedClassesMap = Collections.synchronizedMap(new WeakHashMap<>());
     private final Map<ClassLoader, MyJavaFileManager> fileManagerMap = Collections.synchronizedMap(new WeakHashMap<>());
@@ -307,6 +308,11 @@ public class CachedCompiler implements Closeable {
         Objects.requireNonNull(className, "className");
         if (!CLASS_NAME_PATTERN.matcher(className).matches()) {
             throw new IllegalArgumentException("Invalid class name: " + className);
+        }
+        for (String segment : className.split("\\.", -1)) {
+            if (!CLASS_NAME_SEGMENT_PATTERN.matcher(segment).matches()) {
+                throw new IllegalArgumentException("Invalid class name: " + className);
+            }
         }
     }
 
