@@ -15,8 +15,6 @@
  */
 
 package net.openhft.compiler;
-
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +41,6 @@ import java.util.concurrent.TimeoutException;
  * them as byte arrays, while delegating unresolved operations to a wrapped
  * StandardJavaFileManager.
  */
-@SuppressFBWarnings(value = "DP_DO_INSIDE_DO_PRIVILEGED", justification = "SecurityManager has been removed; reflective member access is guarded via command-line --add-opens guidance.")
 public class MyJavaFileManager implements JavaFileManager {
     private static final Logger LOG = LoggerFactory.getLogger(MyJavaFileManager.class);
     private final static Unsafe unsafe;

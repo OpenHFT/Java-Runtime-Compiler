@@ -15,8 +15,6 @@
  */
 
 package net.openhft.compiler;
-
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -45,7 +43,6 @@ import java.util.Objects;
  * Provides static utility methods for runtime Java compilation, dynamic class loading,
  * and class-path manipulation. Acts as the primary entry point for simple compilation tasks.
  */
-@SuppressFBWarnings(value = "DP_DO_INSIDE_DO_PRIVILEGED", justification = "SecurityManager is removed; making reflective members accessible does not require doPrivileged.")
 public enum CompilerUtils {
     ; // none
     /**

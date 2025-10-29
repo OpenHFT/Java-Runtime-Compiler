@@ -39,6 +39,11 @@
         <Comment>JRC-OPS-207: readBytes returns null for missing files to preserve existing API and tests.</Comment>
     </Match>
     <Match>
+        <Class name="net.openhft.compiler.CompilerUtils"/>
+        <Bug pattern="DP_DO_INSIDE_DO_PRIVILEGED"/>
+        <Comment>SecurityManager is removed; making reflective members accessible does not require doPrivileged.</Comment>
+    </Match>
+    <Match>
         <Class name="net.openhft.compiler.MyJavaFileManager"/>
         <Bug pattern="CRLF_INJECTION_LOGS"/>
         <Comment>JRC-SEC-303: File manager operates on Chronicle-managed temp dirs; structured logging review pending.
@@ -50,6 +55,11 @@
         <Comment>JRC-OPS-206: javac requires the supplied StandardJavaFileManager instance; defensive copy is not
             possible.
         </Comment>
+    </Match>
+    <Match>
+        <Class name="net.openhft.compiler.MyJavaFileManager"/>
+        <Bug pattern="DP_DO_INSIDE_DO_PRIVILEGED"/>
+        <Comment>SecurityManager has been removed; reflective member access is guarded via command-line --add-opens guidance.</Comment>
     </Match>
     <Match>
         <Class name="~net\.openhft\.compiler\.MyJavaFileManager\\$1"/>
