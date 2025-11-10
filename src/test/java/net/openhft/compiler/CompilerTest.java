@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2014-2025 chronicle.software
  *
@@ -31,7 +35,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CompilerTest extends TestCase {
-    static final File parent;
+    private static final File parent;
     private static final String EG_FOO_BAR_TEE = "eg.FooBarTee";
     private static final int RUNS = 1000 * 1000;
 

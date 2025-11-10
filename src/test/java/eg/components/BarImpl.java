@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2014-2025 chronicle.software
  *
@@ -21,8 +25,8 @@ package eg.components;
  */
 
 public class BarImpl implements Bar {
-    final int i;
-    final Tee tee;
+    private final int i;
+    private final Tee tee;
 
     public BarImpl(Tee tee, int i) {
         this.tee = tee;

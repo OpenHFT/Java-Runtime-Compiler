@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2014-2025 chronicle.software
  *
@@ -20,10 +24,10 @@ import eg.components.Foo;
 import eg.components.TeeImpl;
 
 public class FooBarTee {
-    public final String name;
-    public final TeeImpl tee;
-    public final BarImpl bar;
-    public final BarImpl copy;
+    private final String name;
+    private final TeeImpl tee;
+    private final BarImpl bar;
+    private final BarImpl copy;
     public Foo foo;
 
     public FooBarTee(String name) {
@@ -43,7 +47,7 @@ public class FooBarTee {
     public void start() {
     }
 
-    public void stop() {
+    private void stop() {
     }
 
     public void close() {

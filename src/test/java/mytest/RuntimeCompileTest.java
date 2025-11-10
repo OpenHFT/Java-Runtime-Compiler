@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2016-2025 chronicle.software
  *
@@ -35,7 +39,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class RuntimeCompileTest {
-    static String code = "package mytest;\n" +
+    private static String code = "package mytest;\n" +
             "public class Test implements IntConsumer {\n" +
             "    public void accept(int num) {\n" +
             "        if ((byte) num != num)\n" +

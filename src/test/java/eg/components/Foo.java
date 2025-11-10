@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2014-2025 chronicle.software
  *
@@ -21,10 +25,10 @@ package eg.components;
  * Simple data holder used to demonstrate dynamic compilation.
  */
 public class Foo {
-    public final Bar bar;
-    public final Bar copy;
+    private final Bar bar;
+    private final Bar copy;
     public final String s;
-    public final int i;
+    private final int i;
 
     /**
      * Creates a new instance.
