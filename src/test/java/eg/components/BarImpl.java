@@ -8,8 +8,8 @@ package eg.components;
  */
 
 public class BarImpl implements Bar {
-    final int i;
-    final Tee tee;
+    private final int i;
+    private final Tee tee;
 
     public BarImpl(Tee tee, int i) {
         this.tee = tee;

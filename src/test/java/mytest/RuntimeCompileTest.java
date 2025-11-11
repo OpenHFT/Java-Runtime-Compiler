@@ -22,7 +22,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class RuntimeCompileTest {
-    static String code = "package mytest;\n" +
+    private static String code = "package mytest;\n" +
             "public class Test implements IntConsumer {\n" +
             "    public void accept(int num) {\n" +
             "        if ((byte) num != num)\n" +

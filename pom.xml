@@ -12,7 +12,7 @@
         <groupId>net.openhft</groupId>
         <artifactId>java-parent-pom</artifactId>
         <version>1.27ea2-SNAPSHOT</version>
-        <relativePath />
+        <relativePath/>
     </parent>
 
     <artifactId>compiler</artifactId>
@@ -21,6 +21,12 @@
 
     <name>OpenHFT/Java-Runtime-Compiler</name>
     <description>Java Runtime Compiler library.</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <jacoco.line.coverage>0.5</jacoco.line.coverage>
+        <jacoco.branch.coverage>0.3</jacoco.branch.coverage>
+    </properties>
 
     <dependencyManagement>
         <dependencies>
@@ -68,11 +74,6 @@
 
     </dependencies>
 
-    <properties>
-      <sonar.organization>openhft</sonar.organization>
-      <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-    </properties>
-  
     <build>
 
         <plugins>
@@ -144,35 +145,6 @@
     </build>
 
     <profiles>
-        <profile>
-            <id>sonar</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.sonarsource.scanner.maven</groupId>
-                        <artifactId>sonar-maven-plugin</artifactId>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.jacoco</groupId>
-                        <artifactId>jacoco-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>prepare-agent</goal>
-                                </goals>
-                            </execution>
-                            <execution>
-                                <id>report</id>
-                                <phase>prepare-package</phase>
-                                <goals>
-                                    <goal>report</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
         <profile>
             <id>prejava17</id>
             <activation>

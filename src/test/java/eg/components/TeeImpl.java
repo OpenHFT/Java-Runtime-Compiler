@@ -6,7 +6,7 @@ package eg.components;
 /** Immutable implementation of {@link Tee}. */
 public class TeeImpl implements Tee {
     /** `s` is final and set via the constructor. */
-    final String s;
+    private final String s;
 
     public TeeImpl(String s) {
         this.s = s;
