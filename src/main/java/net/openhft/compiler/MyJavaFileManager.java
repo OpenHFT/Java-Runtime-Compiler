@@ -31,7 +31,7 @@ import java.util.concurrent.TimeoutException;
  */
 public class MyJavaFileManager implements JavaFileManager {
     private static final Logger LOG = LoggerFactory.getLogger(MyJavaFileManager.class);
-    private final static Unsafe unsafe;
+    private static final Unsafe unsafe;
     private static final long OVERRIDE_OFFSET;
 
     // Unsafe sets AccessibleObject.override for speed and JDK-9+ compatibility
