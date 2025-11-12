@@ -19,7 +19,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * Provides static utility methods for runtime Java compilation, dynamic class loading,
@@ -146,6 +148,25 @@ public enum CompilerUtils {
         }
         reset();
         return true;
+    }
+
+    /**
+     * Normalizes relative paths and rejects traversal attempts beyond the current root.
+     *
+     * @param path value to sanitize.
+     * @return normalized path when safe.
+     * @throws IllegalArgumentException if the path attempts to traverse upward ("..").
+     */
+    static Path sanitizePath(@NotNull Path path) {
+        Objects.requireNonNull(path, "path");
+        Path normalized = path.normalize();
+        if (normalized.isAbsolute()) {
+            return normalized;
+        }
+        if (normalized.getNameCount() > 0 && "..".equals(normalized.getName(0).toString())) {
+            throw new IllegalArgumentException("Path traversal attempt: " + path);
+        }
+        return normalized;
     }
 
     /**
@@ -303,6 +324,12 @@ public enum CompilerUtils {
             if (bak != null)
                 bak.renameTo(file);
             throw new IllegalStateException("Unable to write " + file, e);
+        } finally {
+            if (bak != null && bak.exists() && file.exists()) {
+                if (!bak.delete()) {
+                    LOGGER.debug("Unable to delete backup {}", bak);
+                }
+            }
         }
         return true;
     }

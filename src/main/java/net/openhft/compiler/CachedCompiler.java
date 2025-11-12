@@ -12,15 +12,15 @@ import javax.tools.Diagnostic;
 import javax.tools.DiagnosticListener;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
-import java.io.Closeable;
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 import static net.openhft.compiler.CompilerUtils.*;
 
@@ -39,18 +39,25 @@ public class CachedCompiler implements Closeable {
     /**
      * Writer used when no alternative is supplied.
      */
-    private static final PrintWriter DEFAULT_WRITER = new PrintWriter(System.err);
+    private static final PrintWriter DEFAULT_WRITER = createDefaultWriter();
     /**
      * Default compiler flags including debug symbols.
      */
     private static final List<String> DEFAULT_OPTIONS = Arrays.asList("-g", "-nowarn");
+    private static final Pattern CLASS_NAME_PATTERN = Pattern.compile("[\\p{Alnum}_$.\\-]+");
+    private static final Pattern CLASS_NAME_SEGMENT_PATTERN = Pattern.compile("[\\p{Alnum}_$]+(?:-[\\p{Alnum}_$]+)*");
 
     private final Map<ClassLoader, Map<String, Class<?>>> loadedClassesMap = Collections.synchronizedMap(new WeakHashMap<>());
     private final Map<ClassLoader, MyJavaFileManager> fileManagerMap = Collections.synchronizedMap(new WeakHashMap<>());
     /**
      * Optional testing hook to replace the file manager implementation.
+     * <p>
+     * This field remains {@code public} to preserve binary compatibility with callers that
+     * accessed it directly in previous releases. Prefer {@link #setFileManagerOverride(Function)}
+     * for source-compatible code.
      */
-    public Function<StandardJavaFileManager, MyJavaFileManager> fileManagerOverride;
+    @SuppressWarnings("WeakerAccess")
+    public volatile Function<StandardJavaFileManager, MyJavaFileManager> fileManagerOverride;
 
     @Nullable
     private final File sourceDir;
@@ -84,7 +91,7 @@ public class CachedCompiler implements Closeable {
                           @NotNull List<String> options) {
         this.sourceDir = sourceDir;
         this.classDir = classDir;
-        this.options = options;
+        this.options = Collections.unmodifiableList(new ArrayList<>(options));
     }
 
     /**
@@ -111,6 +118,7 @@ public class CachedCompiler implements Closeable {
      * @throws ClassNotFoundException if the compiled class cannot be defined
      */
     public Class<?> loadFromJava(@NotNull String className, @NotNull String javaCode) throws ClassNotFoundException {
+        validateClassName(className);
         return loadFromJava(getClass().getClassLoader(), className, javaCode, DEFAULT_WRITER);
     }
 
@@ -127,6 +135,7 @@ public class CachedCompiler implements Closeable {
     public Class<?> loadFromJava(@NotNull ClassLoader classLoader,
                                  @NotNull String className,
                                  @NotNull String javaCode) throws ClassNotFoundException {
+        validateClassName(className);
         return loadFromJava(classLoader, className, javaCode, DEFAULT_WRITER);
     }
 
@@ -144,6 +153,7 @@ public class CachedCompiler implements Closeable {
     Map<String, byte[]> compileFromJava(@NotNull String className,
                                         @NotNull String javaCode,
                                         MyJavaFileManager fileManager) {
+        validateClassName(className);
         return compileFromJava(className, javaCode, DEFAULT_WRITER, fileManager);
     }
 
@@ -162,10 +172,11 @@ public class CachedCompiler implements Closeable {
                                         @NotNull String javaCode,
                                         final @NotNull PrintWriter writer,
                                         MyJavaFileManager fileManager) {
+        validateClassName(className);
         Iterable<? extends JavaFileObject> compilationUnits;
         if (sourceDir != null) {
             String filename = className.replaceAll("\\.", '\\' + File.separator) + ".java";
-            File file = new File(sourceDir, filename);
+            File file = safeResolve(sourceDir, filename);
             writeText(file, javaCode);
             if (s_standardJavaFileManager == null)
                 s_standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
@@ -199,6 +210,7 @@ public class CachedCompiler implements Closeable {
         }
     }
 
+
     /**
      * Compile and load using a specific class loader and writer. The
      * compilation result is cached against the loader for future calls.
@@ -223,7 +235,7 @@ public class CachedCompiler implements Closeable {
             else
                 clazz = loadedClasses.get(className);
         }
-        PrintWriter printWriter = (writer == null ? DEFAULT_WRITER : writer);
+        PrintWriter printWriter = writer == null ? DEFAULT_WRITER : writer;
         if (clazz != null)
             return clazz;
 
@@ -236,6 +248,7 @@ public class CachedCompiler implements Closeable {
         final Map<String, byte[]> compiled = compileFromJava(className, javaCode, printWriter, fileManager);
         for (Map.Entry<String, byte[]> entry : compiled.entrySet()) {
             String className2 = entry.getKey();
+            validateClassName(className2);
             synchronized (loadedClassesMap) {
                 if (loadedClasses.containsKey(className2))
                     continue;
@@ -243,7 +256,7 @@ public class CachedCompiler implements Closeable {
             byte[] bytes = entry.getValue();
             if (classDir != null) {
                 String filename = className2.replaceAll("\\.", '\\' + File.separator) + ".class";
-                boolean changed = writeBytes(new File(classDir, filename), bytes);
+                boolean changed = writeBytes(safeResolve(classDir, filename), bytes);
                 if (changed) {
                     LOG.info("Updated {} in {}", className2, classDir);
                 }
@@ -281,9 +294,46 @@ public class CachedCompiler implements Closeable {
         }
     }
 
+    public void setFileManagerOverride(Function<StandardJavaFileManager, MyJavaFileManager> fileManagerOverride) {
+        this.fileManagerOverride = fileManagerOverride;
+    }
+
     private @NotNull MyJavaFileManager getFileManager(StandardJavaFileManager fm) {
         return fileManagerOverride != null
                 ? fileManagerOverride.apply(fm)
                 : new MyJavaFileManager(fm);
+    }
+
+    private static void validateClassName(String className) {
+        Objects.requireNonNull(className, "className");
+        if (!CLASS_NAME_PATTERN.matcher(className).matches()) {
+            throw new IllegalArgumentException("Invalid class name: " + className);
+        }
+        for (String segment : className.split("\\.", -1)) {
+            if (!CLASS_NAME_SEGMENT_PATTERN.matcher(segment).matches()) {
+                throw new IllegalArgumentException("Invalid class name: " + className);
+            }
+        }
+    }
+
+    static File safeResolve(File root, String relativePath) {
+        Objects.requireNonNull(root, "root");
+        Objects.requireNonNull(relativePath, "relativePath");
+        Path base = root.toPath().toAbsolutePath().normalize();
+        Path candidate = base.resolve(relativePath).normalize();
+        if (!candidate.startsWith(base)) {
+            throw new IllegalArgumentException("Attempted path traversal for " + relativePath);
+        }
+        return candidate.toFile();
+    }
+
+    private static PrintWriter createDefaultWriter() {
+        OutputStreamWriter writer = new OutputStreamWriter(System.err, StandardCharsets.UTF_8);
+        return new PrintWriter(writer, true) {
+            @Override
+            public void close() {
+                flush(); // never close System.err
+            }
+        };
     }
 }
