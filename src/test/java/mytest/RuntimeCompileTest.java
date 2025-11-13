@@ -41,6 +41,7 @@ public class RuntimeCompileTest {
             consumer.accept(128); // no ok
             fail();
         } catch (IllegalArgumentException expected) {
+            assertEquals("Unexpected exception type", IllegalArgumentException.class, expected.getClass());
         }
     }
 

@@ -140,7 +140,7 @@ public class MyJavaFileManagerTest {
                     Iterable<Set<javax.tools.JavaFileManager.Location>> locations =
                             manager.listLocationsForModules(modulesLocation);
                     for (Set<javax.tools.JavaFileManager.Location> ignored : locations) {
-                        // no-op
+                        assertNotNull("Module location set should not be null", ignored);
                     }
                 } catch (UnsupportedOperationException ignored) {
                     // Delegate does not expose module support on this JDK.

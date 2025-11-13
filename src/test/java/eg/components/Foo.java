@@ -3,10 +3,10 @@
  */
 package eg.components;
 
-@SuppressWarnings("QuestionableName")
 /**
  * Simple data holder used to demonstrate dynamic compilation.
  */
+@SuppressWarnings("QuestionableName")
 public class Foo {
     private final Bar bar;
     private final Bar copy;
