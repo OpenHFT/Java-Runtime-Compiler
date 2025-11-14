@@ -1,3 +1,24 @@
+= Java Runtime Compiler Decision Log
+Chronicle Software
+:toc:
+:sectnums:
+:lang: en-GB
+:source-highlighter: rouge
+
+This log records architectural and process choices for the Java Runtime Compiler.
+Each entry uses the Nine-Box tag set and links back to `project-requirements.adoc` where possible.
+
+== Decision Index
+
+* RC-FN-001 Allow hyphenated descriptor class names
+* RC-TEST-002 Align coverage gate with achieved baseline
+* RC-FN-002 Cached compiler API and custom class loaders
+* RC-NF-P-006 Performance and metaspace budget for cached compilation
+* RC-RISK-026 Debug artefact directory safety
+
+== Decisions
+
+[[RC-FN-001]]
 === [RC-FN-001] Allow hyphenated descriptor class names
 
 * Date: 2025-10-28
@@ -34,4 +55,91 @@
 ** Documentation for requirement JRC-TEST-014 is updated to the same value.
 * Notes/Links:
 ** Thresholds maintained in `pom.xml`.
-** Updated requirement: `src/main/docs/project-requirements.adoc`.
+** Updated requirement: `src/main/adoc/project-requirements.adoc` (JRC-TEST-014).
+
+[[RC-FN-002]]
+=== [RC-FN-002] Cached compiler API and custom class loaders
+
+Date :: 2025-11-14
+Context ::
+* Callers need a simple way to compile Java source from a string and obtain a `Class` at runtime.
+* The project requirements JRC-FN-001 to JRC-FN-004 call for a singleton cached compiler and support for custom `ClassLoader` instances.
+* Creating a new compiler for every call would waste CPU time and increase memory pressure.
+Decision ::
+* Use `CompilerUtils.CACHED_COMPILER` as the default entry point for simple compile and load operations.
+* Expose `CachedCompiler` as a reusable component that caches compiled classes per class loader and supports optional debug directories for `.java` and `.class` files.
+Alternatives ::
+* Always construct a new `CachedCompiler` instance for each compilation. ::
+  ** Pros: Very explicit lifecycle; no shared state.
+  ** Cons: Higher overhead per call and no reuse of compiled classes.
+* Provide only low level `CachedCompiler` APIs and no static helper. ::
+  ** Pros: Maximum flexibility for advanced users.
+  ** Cons: Common call sites would need boilerplate and could easily misuse the cache.
+Rationale ::
+* A shared cached compiler keeps the public API small and satisfies JRC-FN-002 while allowing advanced users to manage their own instances.
+* Per class loader caching aligns with application isolation and typical container deployments.
+Impact ::
+* Most applications rely on the shared `CACHED_COMPILER`; misuse can pin classes for the lifetime of the class loader, so long running systems should treat loader choice carefully.
+* Tests must exercise both the shared singleton and user supplied `CachedCompiler` instances, including custom `ClassLoader` paths.
+Links ::
+* `src/main/java/net/openhft/compiler/CompilerUtils.java`
+* `src/main/java/net/openhft/compiler/CachedCompiler.java`
+* `src/main/adoc/project-requirements.adoc` (JRC-FN-001 to JRC-FN-005)
+
+[[RC-NF-P-006]]
+=== [RC-NF-P-006] Performance and metaspace budget for cached compilation
+
+Date :: 2025-11-14
+Context ::
+* Requirements JRC-NF-P-006 to JRC-NF-P-008 set limits on compilation latency, steady state invocation overhead, and metaspace growth.
+* Initialising `JavaCompiler` and `StandardJavaFileManager` is relatively expensive and must not be repeated unnecessarily.
+* Debug output is helpful but can slow down compilation and increase disk activity.
+Decision ::
+* Reuse a single `JavaCompiler` and `StandardJavaFileManager` across compilation calls via `CompilerUtils.reset()`.
+* Maintain a `MyJavaFileManager` per class loader inside `CachedCompiler` to isolate compiled artefacts while still sharing core compiler infrastructure.
+* Use a small default option set (`-g`, `-nowarn`) and allow callers to supply additional options when constructing a `CachedCompiler`.
+Alternatives ::
+* Instantiate a new `JavaCompiler` and file manager for every compilation. ::
+  ** Pros: Simple to reason about; no shared mutable state.
+  ** Cons: Slower start up and higher CPU cost for repeated compiles.
+* Disable debug information and warnings by default. ::
+  ** Pros: Slightly faster and smaller class files.
+  ** Cons: Harder to debug issues and reconcile compiler output with source.
+Rationale ::
+* Reusing compiler infrastructure is the most effective way to keep compile times within the required budget while still supporting rich diagnostics.
+* Per class loader file managers help bound metaspace growth and keep compiled classes associated with the correct loader.
+Impact ::
+* First use of the compiler pays the initialisation cost; subsequent compiles should be significantly faster.
+* Long running processes that create many class loaders must still monitor metaspace usage; tests and benchmarks track these behaviours.
+Links ::
+* `src/main/java/net/openhft/compiler/CompilerUtils.java`
+* `src/main/java/net/openhft/compiler/CachedCompiler.java`
+* `src/main/adoc/project-requirements.adoc` (JRC-NF-P-006 to JRC-NF-P-008)
+
+[[RC-RISK-026]]
+=== [RC-RISK-026] Debug artefact directory safety
+
+Date :: 2025-11-14
+Context ::
+* Requirement JRC-FN-005 mandates a debug mode that writes `.java` and `.class` files to user supplied directories.
+* Requirement JRC-RISK-026 requires a retention policy and safe handling of those directories.
+* Without validation a hostile caller could attempt directory traversal using relative paths.
+Decision ::
+* Treat the configured source and class directories as roots and resolve all debug file paths beneath them using the `safeResolve` helper.
+* Reject any path that would escape the configured root directory and throw an `IllegalArgumentException` when traversal is detected.
+Alternatives ::
+* Write files using the relative paths as supplied without extra checks. ::
+  ** Pros: Simpler implementation.
+  ** Cons: Risk of writing outside the intended directory tree.
+* Remove debug file emission from the library. ::
+  ** Pros: Eliminates this class of risk.
+  ** Cons: Makes troubleshooting much harder and violates JRC-FN-005.
+Rationale ::
+* Safe resolution of paths balances the need for useful debug output with the requirement to keep file writes constrained to explicit directories.
+* Failing fast on invalid paths helps surface configuration issues early in development and testing.
+Impact ::
+* Callers must choose appropriate root directories; attempts to write using paths that escape those roots will fail.
+* Future work on retention tooling should build on the same root directory assumptions.
+Links ::
+* `src/main/java/net/openhft/compiler/CachedCompiler.java` (`safeResolve`)
+* `src/main/adoc/project-requirements.adoc` (JRC-FN-005, JRC-RISK-026)
