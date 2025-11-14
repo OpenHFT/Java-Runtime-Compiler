@@ -2,8 +2,12 @@
 :toc:
 :lang: en-GB
 :source-highlighter: rouge
+:sectnums:
 
 == Requirement Catalogue
+
+This document captures all `JRC-*` requirements for the Java Runtime Compiler library using a Nine-Box style tag set grouped by functional, non-functional and testing concerns.
+Each identifier links code, decision records and operational guidance back to the same requirement row.
 
 === Functional (FN)
 
