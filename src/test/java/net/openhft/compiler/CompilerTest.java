@@ -40,9 +40,9 @@ public class CompilerTest extends TestCase {
         // CompilerUtils.setDebug(true);
         // added so the test passes in Maven.
         CompilerUtils.addClassPath("target/test-classes");
-//        ClassLoader loader = CompilerTest.class.getClassLoader();
-//        URLClassLoader urlClassLoader = new URLClassLoader(((URLClassLoader)loader).getURLs(), null);
-//        Class fooBarTee1 = urlClassLoader.loadClass("eg.FooBarTee");
+        //        ClassLoader loader = CompilerTest.class.getClassLoader();
+        //        URLClassLoader urlClassLoader = new URLClassLoader(((URLClassLoader)loader).getURLs(), null);
+        //        Class fooBarTee1 = urlClassLoader.loadClass("eg.FooBarTee");
 
         // this writes the file to disk only when debugging is enabled.
         CachedCompiler cc = CompilerUtils.DEBUGGING ?

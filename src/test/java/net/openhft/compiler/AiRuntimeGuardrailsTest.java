@@ -72,7 +72,7 @@ public class AiRuntimeGuardrailsTest {
                 new CachedCompilerInvoker()
         );
 
-        Class<?> clazz = pipeline.compile("agent-B", "OkClass",
+        final Class<?> clazz = pipeline.compile("agent-B", "OkClass",
                 "public class OkClass { public int add(int a, int b) { return a + b; } }");
 
         assertEquals("agent-B should see exactly one attempt", 1, telemetry.compileAttempts("agent-B"));
@@ -100,8 +100,8 @@ public class AiRuntimeGuardrailsTest {
         );
 
         String source = "public class CacheCandidate { public String id() { return \"ok\"; } }";
-        Class<?> first = pipeline.compile("agent-C", "CacheCandidate", source);
-        Class<?> second = pipeline.compile("agent-C", "CacheCandidate", source);
+        final Class<?> first = pipeline.compile("agent-C", "CacheCandidate", source);
+        final Class<?> second = pipeline.compile("agent-C", "CacheCandidate", source);
 
         assertEquals("Underlying compiler should only run once thanks to caching", 1, rawCompileCount.get());
         assertEquals(2, telemetry.compileAttempts("agent-C"));
