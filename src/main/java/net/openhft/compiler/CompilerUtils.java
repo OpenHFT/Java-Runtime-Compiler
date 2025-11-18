@@ -22,6 +22,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -90,14 +91,14 @@ public enum CompilerUtils {
         synchronized (CompilerUtils.class) {
             JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
             if (compiler == null) {
-            try {
-                Class<?> javacTool = Class.forName("com.sun.tools.javac.api.JavacTool");
-                Method create = javacTool.getMethod("create");
+                try {
+                    Class<?> javacTool = Class.forName("com.sun.tools.javac.api.JavacTool");
+                    Method create = javacTool.getMethod("create");
                     compiler = (JavaCompiler) create.invoke(null);
-            } catch (Exception e) {
-                throw new AssertionError(e);
+                } catch (Exception e) {
+                    throw new AssertionError(e);
+                }
             }
-        }
             s_compiler = compiler;
             // Invalidate any cached file manager tied to the previous compiler.
             s_standardJavaFileManager = null;

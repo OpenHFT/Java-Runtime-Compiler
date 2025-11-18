@@ -108,7 +108,7 @@ public class CompilerTest extends TestCase {
                 public void write(int b) {
                 }
             }, true, StandardCharsets.UTF_8.name()));
-            final Constructor<?> stringConstructor = clazz.getConstructor(String.class);
+            final Constructor stringConstructor = clazz.getConstructor(String.class);
             long start = 0;
             for (int i = -RUNS / 10; i < RUNS; i++) {
                 if (i == 0) start = System.nanoTime();
