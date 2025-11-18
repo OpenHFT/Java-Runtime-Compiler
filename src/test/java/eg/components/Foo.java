@@ -8,9 +8,12 @@ package eg.components;
  */
 @SuppressWarnings("QuestionableName")
 public class Foo {
-    private final Bar bar;
-    private final Bar copy;
+    @SuppressWarnings("unused")
+    public final Bar bar;
+    @SuppressWarnings("unused")
+    public final Bar copy;
     public final String s;
+    @SuppressWarnings("unused")
     private final int i;
 
     /**

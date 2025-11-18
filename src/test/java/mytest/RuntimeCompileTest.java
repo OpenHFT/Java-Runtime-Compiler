@@ -9,6 +9,8 @@ import org.junit.Test;
 
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -32,7 +34,8 @@ public class RuntimeCompileTest {
 
     @Test
     public void outOfBounds() throws Exception {
-        ClassLoader cl = new URLClassLoader(new URL[0]);
+        ClassLoader cl = AccessController.doPrivileged(
+                (PrivilegedAction<ClassLoader>) () -> new URLClassLoader(new URL[0]));
         Class<?> aClass = CompilerUtils.CACHED_COMPILER.
                 loadFromJava(cl, "mytest.Test", code);
         IntConsumer consumer = (IntConsumer) aClass.getDeclaredConstructor().newInstance();

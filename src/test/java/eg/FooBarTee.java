@@ -8,6 +8,7 @@ import eg.components.Foo;
 import eg.components.TeeImpl;
 
 public class FooBarTee {
+    @SuppressWarnings("unused")
     private final String name;
     private final TeeImpl tee;
     private final BarImpl bar;
@@ -25,7 +26,7 @@ public class FooBarTee {
 
         // ${generatedDate}
         // Build scripts replace the token with the current date.
-        foo = new Foo(bar, copy, "generated test ${generatedDate}", 5);
+        foo = new Foo(bar, copy, "generated test ${generatedDate}", name.length());
     }
 
     public void start() {

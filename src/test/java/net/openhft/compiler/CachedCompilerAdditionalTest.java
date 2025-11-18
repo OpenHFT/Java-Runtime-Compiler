@@ -19,6 +19,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 import static org.junit.Assert.*;
 
@@ -60,8 +62,9 @@ public class CachedCompilerAdditionalTest {
     @Test
     public void updateFileManagerForClassLoaderInvokesConsumer() throws Exception {
         CachedCompiler compiler = new CachedCompiler(null, null);
-        ClassLoader loader = new ClassLoader() {
-        };
+        ClassLoader loader = AccessController.doPrivileged(
+                (PrivilegedAction<ClassLoader>) () -> new ClassLoader() {
+                });
         compiler.loadFromJava(loader, "coverage.UpdateTarget", "package coverage; public class UpdateTarget {}");
 
         AtomicBoolean invoked = new AtomicBoolean(false);
@@ -73,8 +76,10 @@ public class CachedCompilerAdditionalTest {
     public void updateFileManagerNoOpWhenClassLoaderUnknown() {
         CachedCompiler compiler = new CachedCompiler(null, null);
         AtomicBoolean invoked = new AtomicBoolean(false);
-        compiler.updateFileManagerForClassLoader(new ClassLoader() {
-        }, fm -> invoked.set(true));
+        ClassLoader loader = AccessController.doPrivileged(
+                (PrivilegedAction<ClassLoader>) () -> new ClassLoader() {
+                });
+        compiler.updateFileManagerForClassLoader(loader, fm -> invoked.set(true));
         assertTrue("Consumer should not be invoked when manager missing", !invoked.get());
     }
 
@@ -86,8 +91,9 @@ public class CachedCompilerAdditionalTest {
         AtomicBoolean closed = new AtomicBoolean(false);
         cachedCompiler.setFileManagerOverride(standard -> new TrackingFileManager(standard, closed));
 
-        ClassLoader loader = new ClassLoader() {
-        };
+        ClassLoader loader = AccessController.doPrivileged(
+                (PrivilegedAction<ClassLoader>) () -> new ClassLoader() {
+                });
         cachedCompiler.loadFromJava(loader, "coverage.CloseTarget", "package coverage; public class CloseTarget {}");
         cachedCompiler.close();
         assertTrue("Close should propagate to file managers", closed.get());
@@ -153,8 +159,9 @@ public class CachedCompilerAdditionalTest {
 
             String className = "coverage.FileOutput";
             String versionOne = "package coverage; public class FileOutput { public String value() { return \"v1\"; } }";
-            ClassLoader loaderOne = new ClassLoader() {
-            };
+            ClassLoader loaderOne = AccessController.doPrivileged(
+                    (PrivilegedAction<ClassLoader>) () -> new ClassLoader() {
+                    });
             firstPass.loadFromJava(loaderOne, className, versionOne);
             firstPass.close();
 
@@ -166,8 +173,9 @@ public class CachedCompilerAdditionalTest {
 
             CachedCompiler secondPass = new CachedCompiler(sourceDir.toFile(), classDir.toFile());
             String versionTwo = "package coverage; public class FileOutput { public String value() { return \"v2\"; } }";
-            ClassLoader loaderTwo = new ClassLoader() {
-            };
+            ClassLoader loaderTwo = AccessController.doPrivileged(
+                    (PrivilegedAction<ClassLoader>) () -> new ClassLoader() {
+                    });
             secondPass.loadFromJava(loaderTwo, className, versionTwo);
             secondPass.close();
 

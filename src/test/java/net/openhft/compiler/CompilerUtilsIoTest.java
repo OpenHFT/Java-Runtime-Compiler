@@ -12,6 +12,8 @@ import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -165,13 +167,13 @@ public class CompilerUtilsIoTest {
         Method method = CompilerUtils.class.getDeclaredMethod("getInputStream", String.class);
         method.setAccessible(true);
         try (InputStream is = (InputStream) method.invoke(null, "=inline-data")) {
-            String value = new String(readFully(is));
+            String value = new String(readFully(is), StandardCharsets.UTF_8);
             assertEquals("inline-data", value);
         }
         Path tempFile = Files.createTempFile("compiler-utils-stream", ".txt");
         Files.write(tempFile, "file-data".getBytes(StandardCharsets.UTF_8));
         try (InputStream is = (InputStream) method.invoke(null, tempFile.toString())) {
-            String value = new String(readFully(is));
+            String value = new String(readFully(is), StandardCharsets.UTF_8);
             assertEquals("file-data", value);
         }
     }
@@ -190,15 +192,16 @@ public class CompilerUtilsIoTest {
         Method method = CompilerUtils.class.getDeclaredMethod("getInputStream", String.class);
         method.setAccessible(true);
         ClassLoader original = Thread.currentThread().getContextClassLoader();
-        ClassLoader loader = new ClassLoader(original) {
+        ClassLoader loader = AccessController.doPrivileged(
+                (PrivilegedAction<ClassLoader>) () -> new ClassLoader(original) {
             @Override
             public InputStream getResourceAsStream(String name) {
-                if ("/fallback-resource".equals(name)) {
-                    return new ByteArrayInputStream("fallback".getBytes(StandardCharsets.UTF_8));
+                    if ("/fallback-resource".equals(name)) {
+                        return new ByteArrayInputStream("fallback".getBytes(StandardCharsets.UTF_8));
+                    }
+                    return null;
                 }
-                return null;
-            }
-        };
+        });
         Thread.currentThread().setContextClassLoader(loader);
         try (InputStream is = (InputStream) method.invoke(null, "fallback-resource")) {
             assertEquals("fallback", new String(readFully(is), StandardCharsets.UTF_8));

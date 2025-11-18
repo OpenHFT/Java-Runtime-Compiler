@@ -9,12 +9,14 @@ import junit.framework.TestCase;
 import org.junit.Test;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CompilerTest extends TestCase {
@@ -105,7 +107,7 @@ public class CompilerTest extends TestCase {
                 @Override
                 public void write(int b) throws IOException {
                 }
-            }));
+            }, true, StandardCharsets.UTF_8.name()));
             final Constructor stringConstructor = clazz.getConstructor(String.class);
             long start = 0;
             for (int i = -RUNS / 10; i < RUNS; i++) {
@@ -137,13 +139,13 @@ public class CompilerTest extends TestCase {
                 public void write(int b) throws IOException {
                     usedSysOut.set(true);
                 }
-            }));
+            }, true, StandardCharsets.UTF_8.name()));
             System.setErr(new PrintStream(new OutputStream() {
                 @Override
                 public void write(int b) throws IOException {
                     usedSysErr.set(true);
                 }
-            }));
+            }, true, StandardCharsets.UTF_8.name()));
 
             CompilerUtils.CACHED_COMPILER.loadFromJava(
                     getClass().getClassLoader(), "TestClass", "clazz TestClass {}",
@@ -163,7 +165,7 @@ public class CompilerTest extends TestCase {
                 "TestClass.java:1: error", "clazz TestClass {}");
 
         for (String expectedError : expectedInErrorFromCompiler) {
-            String errorMessage = String.format("Does not contain expected '%s' in:\n%s", expectedError, writer.toString());
+            String errorMessage = String.format("Does not contain expected '%s' in:%n%s", expectedError, writer.toString());
             assertTrue(errorMessage, writer.toString().contains(expectedError));
         }
     }
@@ -182,13 +184,13 @@ public class CompilerTest extends TestCase {
                 public void write(int b) {
                     usedSysOut.set(true);
                 }
-            }));
+            }, true, StandardCharsets.UTF_8.name()));
             System.setErr(new PrintStream(new OutputStream() {
                 @Override
                 public void write(int b) throws IOException {
                     usedSysErr.set(true);
                 }
-            }));
+            }, true, StandardCharsets.UTF_8.name()));
 
             CompilerUtils.CACHED_COMPILER.loadFromJava(
                     getClass().getClassLoader(), "TestClass", "class TestClass {}",
@@ -217,13 +219,13 @@ public class CompilerTest extends TestCase {
                 public void write(int b) throws IOException {
                     usedSysOut.set(true);
                 }
-            }));
+            }, true, StandardCharsets.UTF_8.name()));
             System.setErr(new PrintStream(new OutputStream() {
                 @Override
                 public void write(int b) throws IOException {
                     usedSysErr.set(true);
                 }
-            }));
+            }, true, StandardCharsets.UTF_8.name()));
 
             CompilerUtils.CACHED_COMPILER.loadFromJava(
                     getClass().getClassLoader(), "TestClass",
@@ -242,7 +244,7 @@ public class CompilerTest extends TestCase {
 
     public void test_compilerErrorsDoNotBreakNextCompilations() throws Exception {
         // quieten the compiler output
-        PrintWriter quietWriter = new PrintWriter(new StringWriter());
+        PrintWriter quietWriter = new PrintWriter(new OutputStreamWriter(new ByteArrayOutputStream(), StandardCharsets.UTF_8));
 
         // cause a compiler error
         try {
@@ -258,7 +260,7 @@ public class CompilerTest extends TestCase {
                 getClass().getClassLoader(), "S", "class S {" +
                         "public static final String s = \"ok\";}");
 
-        Callable callable = (Callable)
+        java.util.concurrent.Callable<?> callable = (java.util.concurrent.Callable<?>)
                 CompilerUtils.CACHED_COMPILER.loadFromJava(
                                 getClass().getClassLoader(), "OtherClass",
                                 "import java.util.concurrent.Callable; " +
@@ -274,10 +276,11 @@ public class CompilerTest extends TestCase {
     @Test
     public void testNewCompiler() throws Exception {
         for (int i = 1; i <= 3; i++) {
-            ClassLoader classLoader = new ClassLoader() {
-            };
+            ClassLoader classLoader = AccessController.doPrivileged(
+                    (PrivilegedAction<ClassLoader>) () -> new ClassLoader() {
+                    });
             CachedCompiler cc = new CachedCompiler(null, null);
-            Class<?> a = cc.loadFromJava(classLoader, "A", "public class A { static int i = " + i + "; }");
+            cc.loadFromJava(classLoader, "A", "public class A { static int i = " + i + "; }");
             Class<?> b = cc.loadFromJava(classLoader, "B", "public class B implements net.openhft.compiler.MyIntSupplier { public int get() { return A.i; } }");
             MyIntSupplier bi = (MyIntSupplier) b.getDeclaredConstructor().newInstance();
             assertEquals(i, bi.get());
