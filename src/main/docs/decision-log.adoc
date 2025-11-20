@@ -70,11 +70,11 @@ Decision ::
 * Expose `CachedCompiler` as a reusable component that caches compiled classes per class loader and supports optional debug directories for `.java` and `.class` files.
 Alternatives ::
 * Always construct a new `CachedCompiler` instance for each compilation. ::
-  ** Pros: Very explicit lifecycle; no shared state.
-  ** Cons: Higher overhead per call and no reuse of compiled classes.
+** Pros: Very explicit lifecycle; no shared state.
+** Cons: Higher overhead per call and no reuse of compiled classes.
 * Provide only low level `CachedCompiler` APIs and no static helper. ::
-  ** Pros: Maximum flexibility for advanced users.
-  ** Cons: Common call sites would need boilerplate and could easily misuse the cache.
+** Pros: Maximum flexibility for advanced users.
+** Cons: Common call sites would need boilerplate and could easily misuse the cache.
 Rationale ::
 * A shared cached compiler keeps the public API small and satisfies JRC-FN-002 while allowing advanced users to manage their own instances.
 * Per class loader caching aligns with application isolation and typical container deployments.
@@ -100,11 +100,11 @@ Decision ::
 * Use a small default option set (`-g`, `-nowarn`) and allow callers to supply additional options when constructing a `CachedCompiler`.
 Alternatives ::
 * Instantiate a new `JavaCompiler` and file manager for every compilation. ::
-  ** Pros: Simple to reason about; no shared mutable state.
-  ** Cons: Slower start up and higher CPU cost for repeated compiles.
+** Pros: Simple to reason about; no shared mutable state.
+** Cons: Slower start up and higher CPU cost for repeated compiles.
 * Disable debug information and warnings by default. ::
-  ** Pros: Slightly faster and smaller class files.
-  ** Cons: Harder to debug issues and reconcile compiler output with source.
+** Pros: Slightly faster and smaller class files.
+** Cons: Harder to debug issues and reconcile compiler output with source.
 Rationale ::
 * Reusing compiler infrastructure is the most effective way to keep compile times within the required budget while still supporting rich diagnostics.
 * Per class loader file managers help bound metaspace growth and keep compiled classes associated with the correct loader.
@@ -129,11 +129,11 @@ Decision ::
 * Reject any path that would escape the configured root directory and throw an `IllegalArgumentException` when traversal is detected.
 Alternatives ::
 * Write files using the relative paths as supplied without extra checks. ::
-  ** Pros: Simpler implementation.
-  ** Cons: Risk of writing outside the intended directory tree.
+** Pros: Simpler implementation.
+** Cons: Risk of writing outside the intended directory tree.
 * Remove debug file emission from the library. ::
-  ** Pros: Eliminates this class of risk.
-  ** Cons: Makes troubleshooting much harder and violates JRC-FN-005.
+** Pros: Eliminates this class of risk.
+** Cons: Makes troubleshooting much harder and violates JRC-FN-005.
 Rationale ::
 * Safe resolution of paths balances the need for useful debug output with the requirement to keep file writes constrained to explicit directories.
 * Failing fast on invalid paths helps surface configuration issues early in development and testing.
