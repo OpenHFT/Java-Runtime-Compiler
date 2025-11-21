@@ -9,6 +9,8 @@ import org.junit.Test;
 
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -22,7 +24,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class RuntimeCompileTest {
-    private static String code = "package mytest;\n" +
+    private static final String code = "package mytest;\n" +
             "public class Test implements IntConsumer {\n" +
             "    public void accept(int num) {\n" +
             "        if ((byte) num != num)\n" +
@@ -32,7 +34,8 @@ public class RuntimeCompileTest {
 
     @Test
     public void outOfBounds() throws Exception {
-        ClassLoader cl = new URLClassLoader(new URL[0]);
+        ClassLoader cl = AccessController.doPrivileged(
+                (PrivilegedAction<ClassLoader>) () -> new URLClassLoader(new URL[0]));
         Class<?> aClass = CompilerUtils.CACHED_COMPILER.
                 loadFromJava(cl, "mytest.Test", code);
         IntConsumer consumer = (IntConsumer) aClass.getDeclaredConstructor().newInstance();
@@ -41,6 +44,7 @@ public class RuntimeCompileTest {
             consumer.accept(128); // no ok
             fail();
         } catch (IllegalArgumentException expected) {
+            assertEquals("Unexpected exception type", IllegalArgumentException.class, expected.getClass());
         }
     }
 
@@ -55,10 +59,7 @@ public class RuntimeCompileTest {
                 "        called.incrementAndGet();\n" +
                 "    }\n");
         for (int j=0; j<1_000; j++) {
-            largeClass.append("    public void accept"+j+"(int num) {\n" +
-                    "        if ((byte) num != num)\n" +
-                    "            throw new IllegalArgumentException();\n" +
-                    "    }\n");
+            largeClass.append("    public void accept").append(j).append("(int num) {\n").append("        if ((byte) num != num)\n").append("            throw new IllegalArgumentException();\n").append("    }\n");
         }
         largeClass.append("}\n");
         final String code2 = largeClass.toString();
