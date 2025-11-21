@@ -211,11 +211,11 @@ public class MyJavaFileManager implements JavaFileManager {
             } catch (InterruptedException t) {
                 Thread.currentThread().interrupt();
 
-                LOG.warn("Interrupted while waiting for compilation result [class=" + e.getKey() + "]");
+                LOG.warn("Interrupted while waiting for compilation result [class={}]", e.getKey());
 
                 break;
             } catch (ExecutionException | TimeoutException t) {
-                LOG.warn("Failed to wait for compilation result [class=" + e.getKey() + "]", t);
+                LOG.warn("Failed to wait for compilation result [class={}]", e.getKey(), t);
 
                 continue;
             }

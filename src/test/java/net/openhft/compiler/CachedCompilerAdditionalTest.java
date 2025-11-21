@@ -80,7 +80,7 @@ public class CachedCompilerAdditionalTest {
                 (PrivilegedAction<ClassLoader>) () -> new ClassLoader() {
                 });
         compiler.updateFileManagerForClassLoader(loader, fm -> invoked.set(true));
-        assertTrue("Consumer should not be invoked when manager missing", !invoked.get());
+        assertFalse("Consumer should not be invoked when manager missing", invoked.get());
     }
 
     @Test
@@ -180,10 +180,10 @@ public class CachedCompilerAdditionalTest {
             secondPass.close();
 
             byte[] updatedBytes = Files.readAllBytes(classFile);
-            assertTrue("Updating the source should change emitted bytecode", !Arrays.equals(firstBytes, updatedBytes));
+            assertFalse("Updating the source should change emitted bytecode", Arrays.equals(firstBytes, updatedBytes));
 
             Path backupFile = classDir.resolve("coverage/FileOutput.class.bak");
-            assertTrue("Backup should be cleaned up", !Files.exists(backupFile));
+            assertFalse("Backup should be cleaned up", Files.exists(backupFile));
         } finally {
             deleteRecursively(classDir);
             deleteRecursively(sourceDir);

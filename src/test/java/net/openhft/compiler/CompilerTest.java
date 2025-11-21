@@ -105,7 +105,7 @@ public class CompilerTest extends TestCase {
         try {
             System.setOut(new PrintStream(new OutputStream() {
                 @Override
-                public void write(int b) throws IOException {
+                public void write(int b) {
                 }
             }, true, StandardCharsets.UTF_8.name()));
             final Constructor stringConstructor = clazz.getConstructor(String.class);
@@ -136,13 +136,13 @@ public class CompilerTest extends TestCase {
         try {
             System.setOut(new PrintStream(new OutputStream() {
                 @Override
-                public void write(int b) throws IOException {
+                public void write(int b) {
                     usedSysOut.set(true);
                 }
             }, true, StandardCharsets.UTF_8.name()));
             System.setErr(new PrintStream(new OutputStream() {
                 @Override
-                public void write(int b) throws IOException {
+                public void write(int b) {
                     usedSysErr.set(true);
                 }
             }, true, StandardCharsets.UTF_8.name()));
@@ -165,7 +165,7 @@ public class CompilerTest extends TestCase {
                 "TestClass.java:1: error", "clazz TestClass {}");
 
         for (String expectedError : expectedInErrorFromCompiler) {
-            String errorMessage = String.format("Does not contain expected '%s' in:%n%s", expectedError, writer.toString());
+            String errorMessage = String.format("Does not contain expected '%s' in:%n%s", expectedError, writer);
             assertTrue(errorMessage, writer.toString().contains(expectedError));
         }
     }
@@ -187,7 +187,7 @@ public class CompilerTest extends TestCase {
             }, true, StandardCharsets.UTF_8.name()));
             System.setErr(new PrintStream(new OutputStream() {
                 @Override
-                public void write(int b) throws IOException {
+                public void write(int b) {
                     usedSysErr.set(true);
                 }
             }, true, StandardCharsets.UTF_8.name()));
@@ -216,13 +216,13 @@ public class CompilerTest extends TestCase {
         try {
             System.setOut(new PrintStream(new OutputStream() {
                 @Override
-                public void write(int b) throws IOException {
+                public void write(int b) {
                     usedSysOut.set(true);
                 }
             }, true, StandardCharsets.UTF_8.name()));
             System.setErr(new PrintStream(new OutputStream() {
                 @Override
-                public void write(int b) throws IOException {
+                public void write(int b) {
                     usedSysErr.set(true);
                 }
             }, true, StandardCharsets.UTF_8.name()));

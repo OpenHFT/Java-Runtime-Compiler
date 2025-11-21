@@ -212,9 +212,8 @@ public class CachedCompiler implements Closeable {
             // nothing to return due to compiler error
             return Collections.emptyMap();
         } else {
-            Map<String, byte[]> result = fileManager.getAllBuffers();
 
-            return result;
+            return fileManager.getAllBuffers();
         }
     }
 

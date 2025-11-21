@@ -109,7 +109,7 @@ public class AiRuntimeGuardrailsTest {
         assertEquals(1, telemetry.successes("agent-C"));
         assertEquals(0, telemetry.compileFailures("agent-C"));
         assertEquals("Cache hit count should be tracked", 1, telemetry.cacheHits("agent-C"));
-        assertTrue(first == second);
+        assertSame(first, second);
     }
 
     @Test

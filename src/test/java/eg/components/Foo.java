@@ -13,8 +13,6 @@ public class Foo {
     @SuppressWarnings("unused")
     public final Bar copy;
     public final String s;
-    @SuppressWarnings("unused")
-    private final int i;
 
     /**
      * Creates a new instance.
@@ -28,6 +26,5 @@ public class Foo {
         this.bar = bar;
         this.copy = copy;
         this.s = s;
-        this.i = i;
     }
 }

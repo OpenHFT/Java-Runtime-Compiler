@@ -33,7 +33,7 @@ public class CompilerUtilsIoTest {
         assertTrue("First write should report changes", written);
 
         boolean unchanged = CompilerUtils.writeText(file, "hello");
-        assertTrue("Repeat write with identical content should be treated as unchanged", !unchanged);
+        assertFalse("Repeat write with identical content should be treated as unchanged", unchanged);
 
         boolean changed = CompilerUtils.writeText(file, "different");
         assertTrue("Modified content should trigger a rewrite", changed);
@@ -111,7 +111,7 @@ public class CompilerUtilsIoTest {
     public void addClassPathHandlesMissingDirectory() {
         Path nonExisting = Paths.get("not-existing-" + System.nanoTime());
         boolean result = CompilerUtils.addClassPath(nonExisting.toString());
-        assertTrue("Missing directories should return false", !result);
+        assertFalse("Missing directories should return false", result);
     }
 
     @Test
@@ -138,7 +138,7 @@ public class CompilerUtilsIoTest {
         Method readBytes = CompilerUtils.class.getDeclaredMethod("readBytes", File.class);
         readBytes.setAccessible(true);
         Object missing = readBytes.invoke(null, new File("definitely-missing-" + System.nanoTime()));
-        assertEquals(null, missing);
+        assertNull(missing);
 
         Path tempFile = Files.createTempFile("compiler-utils-bytes", ".bin");
         Files.write(tempFile, "bytes".getBytes(StandardCharsets.UTF_8));

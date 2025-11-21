@@ -19,7 +19,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -41,7 +44,7 @@ public enum CompilerUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CompilerUtils.class);
     private static final Method DEFINE_CLASS_METHOD;
-    private static final Charset UTF_8 = Charset.forName("UTF-8");
+    private static final Charset UTF_8 = StandardCharsets.UTF_8;
     private static final String JAVA_CLASS_PATH = "java.class.path";
     static volatile JavaCompiler s_compiler;
     static volatile StandardJavaFileManager s_standardJavaFileManager;
@@ -239,11 +242,7 @@ public enum CompilerUtils {
 
     @NotNull
     private static String decodeUTF8(@NotNull byte[] bytes) {
-        try {
-            return new String(bytes, UTF_8.name());
-        } catch (UnsupportedEncodingException e) {
-            throw new AssertionError(e);
-        }
+        return new String(bytes, UTF_8);
     }
 
     @Nullable
@@ -254,7 +253,7 @@ public enum CompilerUtils {
         if (len > Runtime.getRuntime().totalMemory() / 10)
             throw new IllegalStateException("Attempted to read large file " + file + " was " + len + " bytes.");
         byte[] bytes = new byte[(int) len];
-        try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
+        try (DataInputStream dis = new DataInputStream(Files.newInputStream(file.toPath()))) {
             dis.readFully(bytes);
             return bytes;
         } catch (IOException e) {
@@ -294,11 +293,7 @@ public enum CompilerUtils {
      */
     @NotNull
     private static byte[] encodeUTF8(@NotNull String text) {
-        try {
-            return text.getBytes(UTF_8.name());
-        } catch (UnsupportedEncodingException e) {
-            throw new AssertionError(e);
-        }
+        return text.getBytes(UTF_8);
     }
 
     /**
