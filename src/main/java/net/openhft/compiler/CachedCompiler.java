@@ -178,16 +178,24 @@ public class CachedCompiler implements Closeable {
             String filename = className.replaceAll("\\.", '\\' + File.separator) + ".java";
             File file = safeResolve(sourceDir, filename);
             writeText(file, javaCode);
-            if (s_standardJavaFileManager == null)
-                s_standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
-            compilationUnits = s_standardJavaFileManager.getJavaFileObjects(file);
+            StandardJavaFileManager standardJavaFileManager = s_standardJavaFileManager;
+            if (standardJavaFileManager == null) {
+                synchronized (CompilerUtils.class) {
+                    standardJavaFileManager = s_standardJavaFileManager;
+                    if (standardJavaFileManager == null) {
+                        standardJavaFileManager = currentCompiler().getStandardFileManager(null, null, null);
+                        s_standardJavaFileManager = standardJavaFileManager;
+                    }
+                }
+            }
+            compilationUnits = standardJavaFileManager.getJavaFileObjects(file);
 
         } else {
             javaFileObjects.put(className, new JavaSourceFromString(className, javaCode));
             compilationUnits = new ArrayList<>(javaFileObjects.values()); // To prevent CME from compiler code
         }
         // reuse the same file manager to allow caching of jar files
-        boolean ok = s_compiler.getTask(writer, fileManager, new DiagnosticListener<JavaFileObject>() {
+        boolean ok = currentCompiler().getTask(writer, fileManager, new DiagnosticListener<JavaFileObject>() {
             @Override
             public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
                 if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
@@ -204,9 +212,8 @@ public class CachedCompiler implements Closeable {
             // nothing to return due to compiler error
             return Collections.emptyMap();
         } else {
-            Map<String, byte[]> result = fileManager.getAllBuffers();
 
-            return result;
+            return fileManager.getAllBuffers();
         }
     }
 
@@ -241,7 +248,7 @@ public class CachedCompiler implements Closeable {
 
         MyJavaFileManager fileManager = fileManagerMap.get(classLoader);
         if (fileManager == null) {
-            StandardJavaFileManager standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
+            StandardJavaFileManager standardJavaFileManager = currentCompiler().getStandardFileManager(null, null, null);
             fileManager = getFileManager(standardJavaFileManager);
             fileManagerMap.put(classLoader, fileManager);
         }

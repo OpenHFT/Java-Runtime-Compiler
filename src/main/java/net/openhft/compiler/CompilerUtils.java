@@ -19,6 +19,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
@@ -41,10 +43,10 @@ public enum CompilerUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CompilerUtils.class);
     private static final Method DEFINE_CLASS_METHOD;
-    private static final Charset UTF_8 = Charset.forName("UTF-8");
+    private static final Charset UTF_8 = StandardCharsets.UTF_8;
     private static final String JAVA_CLASS_PATH = "java.class.path";
-    static JavaCompiler s_compiler;
-    static StandardJavaFileManager s_standardJavaFileManager;
+    static volatile JavaCompiler s_compiler;
+    static volatile StandardJavaFileManager s_standardJavaFileManager;
 
     /*
      * Use sun.misc.Unsafe to gain access to ClassLoader.defineClass. This allows
@@ -79,22 +81,36 @@ public enum CompilerUtils {
     }
 
     /**
-     * Reinitialises the cached {@link JavaCompiler}. This method is not thread-safe
-     * and callers must serialise access if used outside static initialisation.
+     * Reinitialises the cached {@link JavaCompiler}. This method synchronises
+     * on a dedicated lock to avoid racy lazy initialisation of static fields.
      *
      * @throws AssertionError if the compiler classes cannot be loaded.
      */
     private static void reset() {
-        s_compiler = ToolProvider.getSystemJavaCompiler();
-        if (s_compiler == null) {
+        synchronized (CompilerUtils.class) {
+            JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+            if (compiler == null) {
             try {
                 Class<?> javacTool = Class.forName("com.sun.tools.javac.api.JavacTool");
                 Method create = javacTool.getMethod("create");
-                s_compiler = (JavaCompiler) create.invoke(null);
+                    compiler = (JavaCompiler) create.invoke(null);
             } catch (Exception e) {
                 throw new AssertionError(e);
             }
         }
+            s_compiler = compiler;
+            // Invalidate any cached file manager tied to the previous compiler.
+            s_standardJavaFileManager = null;
+        }
+    }
+
+    static JavaCompiler currentCompiler() {
+        JavaCompiler compiler = s_compiler;
+        if (compiler != null) {
+            return compiler;
+        }
+        reset();
+        return s_compiler;
     }
 
     /**
@@ -225,11 +241,7 @@ public enum CompilerUtils {
 
     @NotNull
     private static String decodeUTF8(@NotNull byte[] bytes) {
-        try {
-            return new String(bytes, UTF_8.name());
-        } catch (UnsupportedEncodingException e) {
-            throw new AssertionError(e);
-        }
+        return new String(bytes, UTF_8);
     }
 
     @Nullable
@@ -240,17 +252,13 @@ public enum CompilerUtils {
         if (len > Runtime.getRuntime().totalMemory() / 10)
             throw new IllegalStateException("Attempted to read large file " + file + " was " + len + " bytes.");
         byte[] bytes = new byte[(int) len];
-        DataInputStream dis = null;
-        try {
-            dis = new DataInputStream(new FileInputStream(file));
+        try (DataInputStream dis = new DataInputStream(Files.newInputStream(file.toPath()))) {
             dis.readFully(bytes);
+            return bytes;
         } catch (IOException e) {
-            close(dis);
             LOGGER.warn("Unable to read {}", file, e);
             throw new IllegalStateException("Unable to read file " + file, e);
         }
-
-        return bytes;
     }
 
     private static void close(@Nullable Closeable closeable) {
@@ -284,11 +292,7 @@ public enum CompilerUtils {
      */
     @NotNull
     private static byte[] encodeUTF8(@NotNull String text) {
-        try {
-            return text.getBytes(UTF_8.name());
-        } catch (UnsupportedEncodingException e) {
-            throw new AssertionError(e);
-        }
+        return text.getBytes(UTF_8);
     }
 
     /**
@@ -310,7 +314,9 @@ public enum CompilerUtils {
             if (Arrays.equals(bytes, bytes2))
                 return false;
             bak = new File(parentDir, file.getName() + ".bak");
-            file.renameTo(bak);
+            if (!file.renameTo(bak)) {
+                LOGGER.debug("Unable to rename {} to backup {}", file, bak);
+            }
         }
 
         FileOutputStream fos = null;
@@ -318,13 +324,16 @@ public enum CompilerUtils {
             fos = new FileOutputStream(file);
             fos.write(bytes);
         } catch (IOException e) {
-            close(fos);
             LOGGER.warn("Unable to write {} as {}", file, decodeUTF8(bytes), e);
-            file.delete();
-            if (bak != null)
-                bak.renameTo(file);
+            if (file.exists() && !file.delete()) {
+                LOGGER.debug("Unable to delete {}", file);
+            }
+            if (bak != null && bak.exists() && !bak.renameTo(file)) {
+                LOGGER.debug("Unable to restore backup {} to {}", bak, file);
+            }
             throw new IllegalStateException("Unable to write " + file, e);
         } finally {
+            close(fos);
             if (bak != null && bak.exists() && file.exists()) {
                 if (!bak.delete()) {
                     LOGGER.debug("Unable to delete backup {}", bak);
