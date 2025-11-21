@@ -1,8 +1,13 @@
 = Java Runtime Compiler Project Requirements
 :toc:
 :lang: en-GB
+:source-highlighter: rouge
+:sectnums:
 
 == Requirement Catalogue
+
+This document captures all `JRC-*` requirements for the Java Runtime Compiler library using a Nine-Box style tag set grouped by functional, non-functional and testing concerns.
+Each identifier links code, decision records and operational guidance back to the same requirement row.
 
 === Functional (FN)
 
@@ -11,19 +16,21 @@ JRC-FN-002 :: The public API *MUST* expose a singleton _cached compiler_ capable
 JRC-FN-003 :: The library *MUST* support the compilation of nested classes contained in the same source unit.
 JRC-FN-004 :: Callers *MUST* be able to supply a custom `ClassLoader`; default is the current context loader.
 JRC-FN-005 :: A _debug mode_ *MUST* emit `.java` and `.class` artefacts to configurable directories for IDE inspection.
+* _Decision:_ link:../docs/decision-log.adoc#RC-FN-002[RC-FN-002] (cached compiler API) and link:../docs/decision-log.adoc#RC-RISK-026[RC-RISK-026] (debug artefact safety).
 
-=== Non-Functional – Performance (NF-P)
+=== Non-Functional - Performance (NF-P)
 
-JRC-NF-P-006 :: First-time compilation of a <1 kLoC class *SHOULD* complete in ≤ 500 ms on a 3 GHz x86-64 CPU.
+JRC-NF-P-006 :: First-time compilation of a <1 kLoC class *SHOULD* complete in <= 500 ms on a 3 GHz x86-64 CPU.
 JRC-NF-P-007 :: Steady-state invocation latency of compiled methods *MUST* be within 10 % of statically compiled code.
 JRC-NF-P-008 :: Peak metaspace growth per 1 000 unique dynamic classes *MUST NOT* exceed 50 MB.
+* _Decision:_ link:../docs/decision-log.adoc#RC-NF-P-006[RC-NF-P-006] (performance and metaspace budget).
 
-=== Non-Functional – Security (NF-S)
+=== Non-Functional - Security (NF-S)
 
 JRC-NF-S-009 :: The API *MUST* allow callers to plug in a source-code validator to reject untrusted or malicious input.
 JRC-NF-S-010 :: Compilation *MUST* occur with the permissions of the hosting JVM; the library supplies _no_ elevated privileges.
 
-=== Non-Functional – Operability (NF-O)
+=== Non-Functional - Operability (NF-O)
 
 JRC-NF-O-011 :: All internal logging *SHALL* use SLF4J at `INFO` or lower; compilation errors log at `ERROR`.
 JRC-NF-O-012 :: A health-check helper *SHOULD* verify JDK compiler availability and JVM module flags at start-up.
@@ -32,7 +39,8 @@ JRC-NF-O-013 :: The library *MUST* expose a counter metric for successful and fa
 === Test / QA (TEST)
 
 JRC-TEST-014 :: Unit tests *MUST* cover >= 90 % of public API branches, including happy-path and diagnostics.
-JRC-TEST-015 :: Concurrency tests *MUST* exercise ≥ 64 parallel compile requests without race or deadlock.
+* _Decision:_ link:../docs/decision-log.adoc#RC-TEST-002[RC-TEST-002] (coverage gate alignment).
+JRC-TEST-015 :: Concurrency tests *MUST* exercise >= 64 parallel compile requests without race or deadlock.
 JRC-TEST-016 :: A benchmark suite *SHOULD* publish compile latency and runtime call performance on CI.
 
 === Documentation (DOC)
