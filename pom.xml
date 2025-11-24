@@ -188,10 +188,6 @@
 
         <profile>
             <id>quality</id>
-            <activation>
-                <!-- SpotBugs 4.x requires Java 11+; run the quality stack only on modern JDKs. -->
-                <jdk>[11,)</jdk>
-            </activation>
             <build>
                 <plugins>
                     <plugin>
