@@ -1,5 +1,12 @@
 # Guidance for AI agents, bots, and humans contributing to Chronicle Software's OpenHFT projects.
 
+- Follow repository `AGENTS.md` for the base rules; this file adds Java-Runtime-Compiler specifics. Durable docs live in `src/main/docs/` with the landing page at `README.adoc`.
+- Purpose: compile plain Java source strings at runtime and load classes; used for dynamic logic injection and code generation pipelines.
+- Build commands: full build `mvn -q clean verify`; module-only without tests `mvn -pl Java-Runtime-Compiler -am -DskipTests install`.
+- Quality gates: keep Checkstyle/SpotBugs clean; avoid unsafe classloader leaks; ensure generated classes are closed/evicted as documented.
+- Documentation: maintain Nine-Box IDs in `src/main/docs/project-requirements.adoc` and link decisions/tests to them; British English and ASCII/ISO-8859-1 with `:source-highlighter: rouge`.
+- Guardrails: treat generated code as untrusted; enforce validation and sandboxing controls described in `src/main/docs/ai-runtime-guardrails.adoc` / `ai-validator-spec.adoc`; call out any security-impacting configuration changes.
+
 LLM-based agents can accelerate development only if they respect our house rules. This file tells you:
 
 * how to run and verify the build;

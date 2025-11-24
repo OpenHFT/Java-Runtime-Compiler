@@ -1,5 +1,4 @@
 = Java Runtime Compiler Decision Log
-Chronicle Software
 :toc:
 :sectnums:
 :lang: en-GB
@@ -55,7 +54,7 @@ Each entry uses the Nine-Box tag set and links back to `project-requirements.ado
 ** Documentation for requirement JRC-TEST-014 is updated to the same value.
 * Notes/Links:
 ** Thresholds maintained in `pom.xml`.
-** Updated requirement: `src/main/adoc/project-requirements.adoc` (JRC-TEST-014).
+** Updated requirement: `src/main/docs/project-requirements.adoc` (JRC-TEST-014).
 
 [[RC-FN-002]]
 === [RC-FN-002] Cached compiler API and custom class loaders
@@ -84,7 +83,7 @@ Impact ::
 Links ::
 * `src/main/java/net/openhft/compiler/CompilerUtils.java`
 * `src/main/java/net/openhft/compiler/CachedCompiler.java`
-* `src/main/adoc/project-requirements.adoc` (JRC-FN-001 to JRC-FN-005)
+* `src/main/docs/project-requirements.adoc` (JRC-FN-001 to JRC-FN-005)
 
 [[RC-NF-P-006]]
 === [RC-NF-P-006] Performance and metaspace budget for cached compilation
@@ -114,7 +113,7 @@ Impact ::
 Links ::
 * `src/main/java/net/openhft/compiler/CompilerUtils.java`
 * `src/main/java/net/openhft/compiler/CachedCompiler.java`
-* `src/main/adoc/project-requirements.adoc` (JRC-NF-P-006 to JRC-NF-P-008)
+* `src/main/docs/project-requirements.adoc` (JRC-NF-P-006 to JRC-NF-P-008)
 
 [[RC-RISK-026]]
 === [RC-RISK-026] Debug artefact directory safety
@@ -142,4 +141,4 @@ Impact ::
 * Future work on retention tooling should build on the same root directory assumptions.
 Links ::
 * `src/main/java/net/openhft/compiler/CachedCompiler.java` (`safeResolve`)
-* `src/main/adoc/project-requirements.adoc` (JRC-FN-005, JRC-RISK-026)
+* `src/main/docs/project-requirements.adoc` (JRC-FN-005, JRC-RISK-026)
