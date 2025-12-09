@@ -51,7 +51,8 @@ public class RuntimeCompileTest {
     //@Ignore("see https://teamcity.chronicle.software/viewLog.html?buildId=639347&tab=buildResultsDiv&buildTypeId=OpenHFT_BuildAll_BuildJava11compileJava11")
     @Test
     public void testMultiThread() throws Exception {
-        StringBuilder largeClass = new StringBuilder("package mytest;\n" +
+        StringBuilder largeClass = new StringBuilder(1024);
+        largeClass.append("package mytest;\n" +
                 "public class Test2 implements IntConsumer, java.util.function.IntSupplier {\n" +
                 "    static final java.util.concurrent.atomic.AtomicInteger called = new java.util.concurrent.atomic.AtomicInteger(0);\n" +
                 "    public int getAsInt() { return called.get(); }\n" +

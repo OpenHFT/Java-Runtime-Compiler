@@ -39,7 +39,7 @@ public class MyJavaFileManagerTest {
 
             JavaFileObject fileObject = manager.getJavaFileForOutput(StandardLocation.CLASS_OUTPUT,
                     "example.Buffer", JavaFileObject.Kind.CLASS, null);
-            byte[] payload = new byte[]{1, 2, 3, 4};
+            byte[] payload = {1, 2, 3, 4};
             try (OutputStream os = fileObject.openOutputStream()) {
                 os.write(payload);
             }
@@ -200,7 +200,7 @@ public class MyJavaFileManagerTest {
             } catch (InvocationTargetException expected) {
                 Throwable cause = expected.getCause();
                 if (cause instanceof InvocationTargetException) {
-                    cause = ((InvocationTargetException) cause).getCause();
+                    cause = cause.getCause();
                 }
                 assertTrue("Unexpected cause: " + cause,
                         cause instanceof UnsupportedOperationException || cause instanceof IOException);

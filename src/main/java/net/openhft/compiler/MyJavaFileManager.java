@@ -91,26 +91,32 @@ public class MyJavaFileManager implements JavaFileManager {
         return invokeNamedMethodIfAvailable(location, "inferModuleName");
     }
 
+    @Override
     public ClassLoader getClassLoader(Location location) {
         return fileManager.getClassLoader(location);
     }
 
+    @Override
     public synchronized Iterable<JavaFileObject> list(Location location, String packageName, Set<Kind> kinds, boolean recurse) throws IOException {
         return fileManager.list(location, packageName, kinds, recurse);
     }
 
+    @Override
     public String inferBinaryName(Location location, JavaFileObject file) {
         return fileManager.inferBinaryName(location, file);
     }
 
+    @Override
     public boolean isSameFile(FileObject a, FileObject b) {
         return fileManager.isSameFile(a, b);
     }
 
+    @Override
     public synchronized boolean handleOption(String current, Iterator<String> remaining) {
         return fileManager.handleOption(current, remaining);
     }
 
+    @Override
     public boolean hasLocation(Location location) {
         return fileManager.hasLocation(location);
     }
@@ -119,6 +125,7 @@ public class MyJavaFileManager implements JavaFileManager {
      * Return a JavaFileObject backed by the in-memory buffer when the caller
      * requests a class that has just been compiled to {@link StandardLocation#CLASS_OUTPUT}.
      */
+    @Override
     public JavaFileObject getJavaFileForInput(Location location, String className, Kind kind) throws IOException {
 
         if (location == StandardLocation.CLASS_OUTPUT) {
@@ -132,6 +139,7 @@ public class MyJavaFileManager implements JavaFileManager {
 
                 return new SimpleJavaFileObject(URI.create(className), kind) {
                     @NotNull
+                    @Override
                     public InputStream openInputStream() {
                         return new ByteArrayInputStream(bytes);
                     }
@@ -146,9 +154,11 @@ public class MyJavaFileManager implements JavaFileManager {
      * that writes into it.
      */
     @NotNull
+    @Override
     public JavaFileObject getJavaFileForOutput(Location location, final String className, Kind kind, FileObject sibling) {
         return new SimpleJavaFileObject(URI.create(className), kind) {
             @NotNull
+            @Override
             public OutputStream openOutputStream() {
                 // CloseableByteArrayOutputStream.closed is used to filter partial results from getAllBuffers()
                 CloseableByteArrayOutputStream baos = new CloseableByteArrayOutputStream();
@@ -162,22 +172,27 @@ public class MyJavaFileManager implements JavaFileManager {
         };
     }
 
+    @Override
     public FileObject getFileForInput(Location location, String packageName, String relativeName) throws IOException {
         return fileManager.getFileForInput(location, packageName, relativeName);
     }
 
+    @Override
     public FileObject getFileForOutput(Location location, String packageName, String relativeName, FileObject sibling) throws IOException {
         return fileManager.getFileForOutput(location, packageName, relativeName, sibling);
     }
 
+    @Override
     public void flush() {
         // Do nothing
     }
 
+    @Override
     public void close() throws IOException {
         fileManager.close();
     }
 
+    @Override
     public int isSupportedOption(String option) {
         return fileManager.isSupportedOption(option);
     }

@@ -42,14 +42,8 @@ public class AiRuntimeGuardrailsTest {
                 }
         );
 
-        try {
-            pipeline.compile("agent-A", "BadClass", "class BadClass { void x() { System.exit(0); } }");
-            fail("Expected validation failure");
-        } catch (ValidationException expected) {
-            // expected
-        } catch (Exception unexpected) {
-            fail("Unexpected checked exception: " + unexpected.getMessage());
-        }
+        assertThrows(ValidationException.class,
+                () -> pipeline.compile("agent-A", "BadClass", "class BadClass { void x() { System.exit(0); } }"));
 
         assertEquals("Compilation must not run after validation rejection", 0, compileInvocations.get());
         assertEquals(1, telemetry.compileAttempts("agent-A"));
@@ -127,14 +121,8 @@ public class AiRuntimeGuardrailsTest {
                 }
         );
 
-        try {
-            pipeline.compile("agent-D", "Broken", "public class Broken { }");
-            fail("Expected compiler failure");
-        } catch (ClassNotFoundException expected) {
-            // expected
-        } catch (Exception unexpected) {
-            fail("Unexpected exception: " + unexpected.getMessage());
-        }
+        assertThrows(ClassNotFoundException.class,
+                () -> pipeline.compile("agent-D", "Broken", "public class Broken { }"));
 
         assertEquals(1, telemetry.compileAttempts("agent-D"));
         assertEquals(0, telemetry.validationFailures("agent-D"));

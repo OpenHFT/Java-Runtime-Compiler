@@ -98,6 +98,7 @@ public class CachedCompiler implements Closeable {
      * Close any file managers created by this compiler.
      * Normally called when the instance is discarded.
      */
+    @Override
     public void close() {
         try {
             for (MyJavaFileManager fileManager : fileManagerMap.values()) {

@@ -12,6 +12,7 @@ public class TeeImpl implements Tee {
         this.s = s;
     }
 
+    @Override
     public String getS() {
         return s;
     }

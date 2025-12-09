@@ -19,6 +19,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.junit.Assert.assertThrows;
+
 public class CompilerTest extends TestCase {
     private static final File parent;
     private static final String EG_FOO_BAR_TEE = "eg.FooBarTee";
@@ -147,12 +149,10 @@ public class CompilerTest extends TestCase {
                 }
             }, true, StandardCharsets.UTF_8.name()));
 
-            CompilerUtils.CACHED_COMPILER.loadFromJava(
-                    getClass().getClassLoader(), "TestClass", "clazz TestClass {}",
-                    new PrintWriter(writer));
-            fail("Should have failed to compile");
-        } catch (ClassNotFoundException e) {
-            // expected
+            assertThrows(ClassNotFoundException.class, () ->
+                    CompilerUtils.CACHED_COMPILER.loadFromJava(
+                            getClass().getClassLoader(), "TestClass", "clazz TestClass {}",
+                            new PrintWriter(writer)));
         } finally {
             System.setOut(out);
             System.setErr(err);
@@ -247,13 +247,9 @@ public class CompilerTest extends TestCase {
         PrintWriter quietWriter = new PrintWriter(new OutputStreamWriter(new ByteArrayOutputStream(), StandardCharsets.UTF_8));
 
         // cause a compiler error
-        try {
-            CompilerUtils.CACHED_COMPILER.loadFromJava(
-                    getClass().getClassLoader(), "X", "clazz X {}", quietWriter);
-            fail("Should have failed to compile");
-        } catch (ClassNotFoundException e) {
-            // expected
-        }
+        assertThrows(ClassNotFoundException.class, () ->
+                CompilerUtils.CACHED_COMPILER.loadFromJava(
+                        getClass().getClassLoader(), "X", "clazz X {}", quietWriter));
 
         // ensure next class can be compiled and used
         Class<?> testClass = CompilerUtils.CACHED_COMPILER.loadFromJava(
