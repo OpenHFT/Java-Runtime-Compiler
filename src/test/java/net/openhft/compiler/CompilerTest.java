@@ -128,118 +128,39 @@ public class CompilerTest extends TestCase {
     }
 
     public void test_settingPrintStreamWithCompilerErrors() throws Exception {
-        final AtomicBoolean usedSysOut = new AtomicBoolean(false);
-        final AtomicBoolean usedSysErr = new AtomicBoolean(false);
-
-        final PrintStream out = System.out;
-        final PrintStream err = System.err;
-        final StringWriter writer = new StringWriter();
-
-        try {
-            System.setOut(new PrintStream(new OutputStream() {
-                @Override
-                public void write(int b) {
-                    usedSysOut.set(true);
-                }
-            }, true, StandardCharsets.UTF_8.name()));
-            System.setErr(new PrintStream(new OutputStream() {
-                @Override
-                public void write(int b) {
-                    usedSysErr.set(true);
-                }
-            }, true, StandardCharsets.UTF_8.name()));
-
-            assertThrows(ClassNotFoundException.class, () ->
-                    CompilerUtils.CACHED_COMPILER.loadFromJava(
-                            getClass().getClassLoader(), "TestClass", "clazz TestClass {}",
-                            new PrintWriter(writer)));
-        } finally {
-            System.setOut(out);
-            System.setErr(err);
-        }
-
-        assertFalse(usedSysOut.get());
-        assertFalse(usedSysErr.get());
+        final String output = runWithCapturedStreams(writer -> assertThrows(
+                ClassNotFoundException.class,
+                () -> CompilerUtils.CACHED_COMPILER.loadFromJava(
+                        getClass().getClassLoader(), "TestClass", "clazz TestClass {}",
+                        new PrintWriter(writer))));
 
         List<String> expectedInErrorFromCompiler = Arrays.asList(
                 "TestClass.java:1: error", "clazz TestClass {}");
 
         for (String expectedError : expectedInErrorFromCompiler) {
-            String errorMessage = String.format("Does not contain expected '%s' in:%n%s", expectedError, writer);
-            assertTrue(errorMessage, writer.toString().contains(expectedError));
+            String errorMessage = String.format("Does not contain expected '%s' in:%n%s", expectedError, output);
+            assertTrue(errorMessage, output.contains(expectedError));
         }
     }
 
     public void test_settingPrintStreamWithNoErrors() throws Exception {
-        final AtomicBoolean usedSysOut = new AtomicBoolean(false);
-        final AtomicBoolean usedSysErr = new AtomicBoolean(false);
+        final String output = runWithCapturedStreams(writer ->
+                CompilerUtils.CACHED_COMPILER.loadFromJava(
+                        getClass().getClassLoader(), "TestClass", "class TestClass {}",
+                        new PrintWriter(writer)));
 
-        final PrintStream out = System.out;
-        final PrintStream err = System.err;
-        final StringWriter writer = new StringWriter();
-
-        try {
-            System.setOut(new PrintStream(new OutputStream() {
-                @Override
-                public void write(int b) {
-                    usedSysOut.set(true);
-                }
-            }, true, StandardCharsets.UTF_8.name()));
-            System.setErr(new PrintStream(new OutputStream() {
-                @Override
-                public void write(int b) {
-                    usedSysErr.set(true);
-                }
-            }, true, StandardCharsets.UTF_8.name()));
-
-            CompilerUtils.CACHED_COMPILER.loadFromJava(
-                    getClass().getClassLoader(), "TestClass", "class TestClass {}",
-                    new PrintWriter(writer));
-        } finally {
-            System.setOut(out);
-            System.setErr(err);
-        }
-
-        assertFalse(usedSysOut.get());
-        assertFalse(usedSysErr.get());
-        assertEquals("", writer.toString());
+        assertEquals("compiler output should be empty when there are no errors", "", output);
     }
 
     public void test_settingPrintStreamWithWarnings() throws Exception {
-        final AtomicBoolean usedSysOut = new AtomicBoolean(false);
-        final AtomicBoolean usedSysErr = new AtomicBoolean(false);
+        final String output = runWithCapturedStreams(writer ->
+                CompilerUtils.CACHED_COMPILER.loadFromJava(
+                        getClass().getClassLoader(), "TestClass",
+                        // definition with a mandatory warning
+                        "class TestClass { int i = new Date().getDay(); }",
+                        new PrintWriter(writer)));
 
-        final PrintStream out = System.out;
-        final PrintStream err = System.err;
-        final StringWriter writer = new StringWriter();
-
-        try {
-            System.setOut(new PrintStream(new OutputStream() {
-                @Override
-                public void write(int b) {
-                    usedSysOut.set(true);
-                }
-            }, true, StandardCharsets.UTF_8.name()));
-            System.setErr(new PrintStream(new OutputStream() {
-                @Override
-                public void write(int b) {
-                    usedSysErr.set(true);
-                }
-            }, true, StandardCharsets.UTF_8.name()));
-
-            CompilerUtils.CACHED_COMPILER.loadFromJava(
-                    getClass().getClassLoader(), "TestClass",
-                    // definition with a mandatory warning
-                    "class TestClass { int i = new Date().getDay(); }",
-                    new PrintWriter(writer));
-        } finally {
-            System.setOut(out);
-            System.setErr(err);
-        }
-
-        assertFalse(usedSysOut.get());
-        assertFalse(usedSysErr.get());
-        assertEquals("", writer.toString());
+        assertEquals("compiler output should be empty even when warnings are emitted", "", output);
     }
 
     public void test_compilerErrorsDoNotBreakNextCompilations() throws Exception {
@@ -281,5 +202,43 @@ public class CompilerTest extends TestCase {
             MyIntSupplier bi = (MyIntSupplier) b.getDeclaredConstructor().newInstance();
             assertEquals(i, bi.get());
         }
+    }
+
+    private String runWithCapturedStreams(PrintWriterAction action) throws Exception {
+        final AtomicBoolean usedSysOut = new AtomicBoolean(false);
+        final AtomicBoolean usedSysErr = new AtomicBoolean(false);
+
+        final PrintStream out = System.out;
+        final PrintStream err = System.err;
+        final StringWriter writer = new StringWriter();
+
+        try {
+            System.setOut(new PrintStream(new OutputStream() {
+                @Override
+                public void write(int b) {
+                    usedSysOut.set(true);
+                }
+            }, true, StandardCharsets.UTF_8.name()));
+            System.setErr(new PrintStream(new OutputStream() {
+                @Override
+                public void write(int b) {
+                    usedSysErr.set(true);
+                }
+            }, true, StandardCharsets.UTF_8.name()));
+
+            action.accept(new PrintWriter(writer));
+        } finally {
+            System.setOut(out);
+            System.setErr(err);
+        }
+
+        assertFalse("should not have written to System.out", usedSysOut.get());
+        assertFalse("should not have written to System.err", usedSysErr.get());
+        return writer.toString();
+    }
+
+    @FunctionalInterface
+    private interface PrintWriterAction {
+        void accept(PrintWriter writer) throws Exception;
     }
 }

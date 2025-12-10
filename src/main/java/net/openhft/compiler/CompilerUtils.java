@@ -105,6 +105,9 @@ public enum CompilerUtils {
         }
     }
 
+    /**
+     * Returns the cached compiler instance, initialising it if necessary.
+     */
     static JavaCompiler currentCompiler() {
         JavaCompiler compiler = s_compiler;
         if (compiler != null) {
