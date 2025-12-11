@@ -72,6 +72,9 @@ public class CachedCompiler implements Closeable {
      * Create a compiler that optionally writes sources and classes to the given
      * directories. When {@code sourceDir} or {@code classDir} is not null, the
      * corresponding files are written for debugging purposes.
+     *
+     * @param sourceDir directory to emit sources to, or {@code null} to keep in memory
+     * @param classDir  directory to emit class files to, or {@code null} to keep in memory
      */
     public CachedCompiler(@Nullable File sourceDir, @Nullable File classDir) {
         this(sourceDir, classDir, DEFAULT_OPTIONS);
@@ -301,6 +304,11 @@ public class CachedCompiler implements Closeable {
         }
     }
 
+    /**
+     * Overrides the file manager creation hook used during compilation.
+     *
+     * @param fileManagerOverride factory mapping the standard manager to a custom one
+     */
     public void setFileManagerOverride(Function<StandardJavaFileManager, MyJavaFileManager> fileManagerOverride) {
         this.fileManagerOverride = fileManagerOverride;
     }

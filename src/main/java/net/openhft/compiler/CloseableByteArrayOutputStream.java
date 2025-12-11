@@ -17,6 +17,13 @@ public class CloseableByteArrayOutputStream extends ByteArrayOutputStream {
      */
     private final CompletableFuture<?> closeFuture = new CompletableFuture<>();
 
+    /**
+     * Creates an empty stream that completes {@link #closeFuture()} on close.
+     */
+    public CloseableByteArrayOutputStream() {
+        super();
+    }
+
     @Override
     public void close() {
         closeFuture.complete(null);
