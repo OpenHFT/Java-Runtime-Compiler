@@ -204,6 +204,10 @@ public class MyJavaFileManager implements JavaFileManager {
         buffers.clear();
     }
 
+    Map<String, CloseableByteArrayOutputStream> buffersForTest() {
+        return buffers;
+    }
+
     /**
      * Collect all compiled class buffers, blocking until previous compilation
      * runs finish.
@@ -248,7 +252,7 @@ public class MyJavaFileManager implements JavaFileManager {
      * to bypass accessibility checks when required.
      */
     @SuppressWarnings("unchecked")
-    private <T> T invokeNamedMethodIfAvailable(final Location location, final String name) {
+    <T> T invokeNamedMethodIfAvailable(final Location location, final String name) {
         final Method[] methods = fileManager.getClass().getDeclaredMethods();
         for (Method method : methods) {
             if (method.getName().equals(name) && method.getParameterTypes().length == 1 &&

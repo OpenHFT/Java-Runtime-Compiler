@@ -3,7 +3,7 @@
  */
 package net.openhft.compiler;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.tools.FileObject;
 import javax.tools.JavaCompiler;
@@ -17,7 +17,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.net.URI;
@@ -26,14 +25,14 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class MyJavaFileManagerTest {
 
     @Test
     public void bufferedClassReturnedFromInput() throws IOException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required for buffered class round-trip test");
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
             MyJavaFileManager manager = new MyJavaFileManager(delegate);
 
@@ -48,11 +47,11 @@ public class MyJavaFileManagerTest {
                     "example.Buffer", JavaFileObject.Kind.CLASS);
             try (InputStream is = in.openInputStream()) {
                 byte[] read = readFully(is);
-                assertArrayEquals(payload, read);
+                assertArrayEquals(payload, read, "Buffered class bytes should round-trip");
             }
 
             manager.clearBuffers();
-            assertTrue("Buffers should be cleared", manager.getAllBuffers().isEmpty());
+            assertTrue(manager.getAllBuffers().isEmpty(), "Buffers should be cleared");
 
             // Delegate path for non CLASS_OUTPUT locations
             manager.getJavaFileForInput(StandardLocation.CLASS_PATH,
@@ -64,7 +63,7 @@ public class MyJavaFileManagerTest {
     @Test
     public void getJavaFileForInputDelegatesWhenBufferMissing() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required for delegation test with missing buffer");
         try (StandardJavaFileManager base = compiler.getStandardFileManager(null, null, null)) {
             AtomicBoolean delegated = new AtomicBoolean(false);
             JavaFileObject expected = new SimpleJavaFileObject(URI.create("string:///expected"), JavaFileObject.Kind.CLASS) {
@@ -88,24 +87,19 @@ public class MyJavaFileManagerTest {
                         }
                     });
             MyJavaFileManager manager = new MyJavaFileManager(proxy);
-            Field buffersField = MyJavaFileManager.class.getDeclaredField("buffers");
-            buffersField.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            Map<String, CloseableByteArrayOutputStream> buffers =
-                    (Map<String, CloseableByteArrayOutputStream>) buffersField.get(manager);
-            buffers.put("example.KindMismatch", new CloseableByteArrayOutputStream());
+            manager.buffersForTest().put("example.KindMismatch", new CloseableByteArrayOutputStream());
 
             JavaFileObject result = manager.getJavaFileForInput(StandardLocation.CLASS_OUTPUT,
                     "example.KindMismatch", JavaFileObject.Kind.SOURCE);
-            assertTrue("Delegate should be consulted when buffer missing", delegated.get());
-            assertSame("Result should match delegate outcome", result, expected);
+            assertTrue(delegated.get(), "Delegate should be consulted when buffer missing");
+            assertSame(expected, result, "Result should match delegate outcome");
         }
     }
 
     @Test
     public void delegatingMethodsPassThroughToUnderlyingManager() throws IOException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required for delegating methods pass-through test");
         try (StandardJavaFileManager base = compiler.getStandardFileManager(null, null, null)) {
             MyJavaFileManager manager = new MyJavaFileManager(base);
 
@@ -131,7 +125,7 @@ public class MyJavaFileManagerTest {
     @Test
     public void listLocationsForModulesAndInferModuleNameDeferToDelegate() throws IOException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required for module location and name test");
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
             MyJavaFileManager manager = new MyJavaFileManager(delegate);
             javax.tools.JavaFileManager.Location modulesLocation = resolveSystemModules();
@@ -140,7 +134,7 @@ public class MyJavaFileManagerTest {
                     Iterable<Set<javax.tools.JavaFileManager.Location>> locations =
                             manager.listLocationsForModules(modulesLocation);
                     for (Set<javax.tools.JavaFileManager.Location> ignored : locations) {
-                        assertNotNull("Module location set should not be null", ignored);
+                        assertNotNull(ignored, "Module location set should not be null");
                     }
                 } catch (UnsupportedOperationException ignored) {
                     // Delegate does not expose module support on this JDK.
@@ -157,32 +151,26 @@ public class MyJavaFileManagerTest {
     @Test
     public void invokeNamedMethodHandlesMissingMethods() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required for missing method handling test");
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
             MyJavaFileManager manager = new MyJavaFileManager(delegate);
-            java.lang.reflect.Method method = MyJavaFileManager.class.getDeclaredMethod(
-                    "invokeNamedMethodIfAvailable", javax.tools.JavaFileManager.Location.class, String.class);
-            method.setAccessible(true);
-            try {
-                method.invoke(manager, StandardLocation.CLASS_PATH, "nonExistingMethod");
-                fail("Expected UnsupportedOperationException when method is absent");
-            } catch (java.lang.reflect.InvocationTargetException expected) {
-                assertTrue(expected.getCause() instanceof UnsupportedOperationException);
-            }
+            assertThrows(UnsupportedOperationException.class,
+                    () -> manager.invokeNamedMethodIfAvailable(StandardLocation.CLASS_PATH, "nonExistingMethod"),
+                    "Expected UnsupportedOperationException when method is absent");
         }
     }
 
     @Test
     public void invokeNamedMethodWrapsInvocationFailures() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required for invocation failure wrapping test");
         try (StandardJavaFileManager base = compiler.getStandardFileManager(null, null, null)) {
             StandardJavaFileManager proxy = (StandardJavaFileManager) Proxy.newProxyInstance(
                     StandardJavaFileManager.class.getClassLoader(),
                     new Class[]{StandardJavaFileManager.class},
                     (proxyInstance, method, args) -> {
                         if ("listLocationsForModules".equals(method.getName())) {
-                            throw new InvocationTargetException(new IOException("forced"));
+                            throw new IOException("forced");
                         }
                         try {
                             return method.invoke(base, args);
@@ -191,19 +179,15 @@ public class MyJavaFileManagerTest {
                         }
                     });
             MyJavaFileManager manager = new MyJavaFileManager(proxy);
-            java.lang.reflect.Method method = MyJavaFileManager.class.getDeclaredMethod(
-                    "invokeNamedMethodIfAvailable", javax.tools.JavaFileManager.Location.class, String.class);
-            method.setAccessible(true);
             try {
-                method.invoke(manager, StandardLocation.CLASS_PATH, "listLocationsForModules");
-                fail("Expected invocation failure to be wrapped");
-            } catch (InvocationTargetException expected) {
+                manager.invokeNamedMethodIfAvailable(StandardLocation.CLASS_PATH, "listLocationsForModules");
+                fail("Expected IOException from delegate to be wrapped in UnsupportedOperationException");
+            } catch (UnsupportedOperationException expected) {
                 Throwable cause = expected.getCause();
                 if (cause instanceof InvocationTargetException) {
                     cause = cause.getCause();
                 }
-                assertTrue("Unexpected cause: " + cause,
-                        cause instanceof UnsupportedOperationException || cause instanceof IOException);
+                assertInstanceOf(IOException.class, cause, "Unexpected cause: " + cause);
             }
         }
     }
@@ -212,19 +196,16 @@ public class MyJavaFileManagerTest {
     @SuppressWarnings("unchecked")
     public void getAllBuffersSkipsEntriesWhenFutureFails() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required for buffer failure test");
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
             MyJavaFileManager manager = new MyJavaFileManager(delegate);
-            Field buffersField = MyJavaFileManager.class.getDeclaredField("buffers");
-            buffersField.setAccessible(true);
-            Map<String, CloseableByteArrayOutputStream> buffers =
-                    (Map<String, CloseableByteArrayOutputStream>) buffersField.get(manager);
+            Map<String, CloseableByteArrayOutputStream> buffers = manager.buffersForTest();
             FaultyByteArrayOutputStream faulty = new FaultyByteArrayOutputStream();
             synchronized (buffers) {
                 buffers.put("coverage.Faulty", faulty);
             }
             Map<String, byte[]> collected = manager.getAllBuffers();
-            assertTrue("Faulty entries should be skipped when the close future fails", collected.isEmpty());
+            assertTrue(collected.isEmpty(), "Faulty entries should be skipped when the close future fails");
         }
     }
 

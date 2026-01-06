@@ -227,7 +227,7 @@ public enum CompilerUtils {
      * @return the text contents of the resource.
      * @throws IOException if an I/O error occurs while reading.
      */
-    private static String readText(@NotNull String resourceName) throws IOException {
+    static String readText(@NotNull String resourceName) throws IOException {
         if (resourceName.startsWith("="))
             return resourceName.substring(1);
         StringWriter sw = new StringWriter();
@@ -244,13 +244,13 @@ public enum CompilerUtils {
     }
 
     @NotNull
-    private static String decodeUTF8(@NotNull byte[] bytes) {
+    static String decodeUTF8(@NotNull byte[] bytes) {
         return new String(bytes, UTF_8);
     }
 
     @Nullable
     @SuppressWarnings("ReturnOfNull")
-    private static byte[] readBytes(@NotNull File file) {
+    static byte[] readBytes(@NotNull File file) {
         if (!file.exists()) return null;
         long len = file.length();
         if (len > Runtime.getRuntime().totalMemory() / 10)
@@ -265,7 +265,7 @@ public enum CompilerUtils {
         }
     }
 
-    private static void close(@Nullable Closeable closeable) {
+    static void close(@Nullable Closeable closeable) {
         if (closeable != null)
             try {
                 closeable.close();
@@ -295,7 +295,7 @@ public enum CompilerUtils {
      * @throws AssertionError if the JVM does not support UTF-8.
      */
     @NotNull
-    private static byte[] encodeUTF8(@NotNull String text) {
+    static byte[] encodeUTF8(@NotNull String text) {
         return text.getBytes(UTF_8);
     }
 
@@ -355,7 +355,7 @@ public enum CompilerUtils {
      * @throws FileNotFoundException if no file or resource exists.
      */
     @NotNull
-    private static InputStream getInputStream(@NotNull String filename) throws FileNotFoundException {
+    static InputStream getInputStream(@NotNull String filename) throws FileNotFoundException {
         if (filename.isEmpty()) throw new IllegalArgumentException("The file name cannot be empty.");
         if (filename.charAt(0) == '=') return new ByteArrayInputStream(encodeUTF8(filename.substring(1)));
         ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();

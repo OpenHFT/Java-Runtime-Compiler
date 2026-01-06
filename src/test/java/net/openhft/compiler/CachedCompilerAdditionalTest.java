@@ -3,16 +3,18 @@
  */
 package net.openhft.compiler;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -22,14 +24,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class CachedCompilerAdditionalTest {
 
     @Test
     public void compileFromJavaReturnsBytecode() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "ToolProvider.getSystemJavaCompiler() must return a JavaCompiler instance for CachedCompiler to function");
 
         try (StandardJavaFileManager standardManager = compiler.getStandardFileManager(null, null, null)) {
             CachedCompiler cachedCompiler = new CachedCompiler(null, null);
@@ -39,15 +41,15 @@ public class CachedCompilerAdditionalTest {
                     "package coverage; public class Sample { public int value() { return 42; } }",
                     fileManager);
             byte[] bytes = classes.get("coverage.Sample");
-            assertNotNull(bytes);
-            assertTrue(bytes.length > 0);
+            assertNotNull(bytes, "compileFromJava() must return bytecode for successfully compiled class 'coverage.Sample'");
+            assertTrue(bytes.length > 0, "Bytecode array for 'coverage.Sample' must contain at least one byte representing valid JVM class file");
         }
     }
 
     @Test
     public void compileFromJavaReturnsEmptyMapOnFailure() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "ToolProvider.getSystemJavaCompiler() must return a JavaCompiler instance for CachedCompiler to function");
         try (StandardJavaFileManager standardManager = compiler.getStandardFileManager(null, null, null)) {
             CachedCompiler cachedCompiler = new CachedCompiler(null, null);
             MyJavaFileManager fileManager = new MyJavaFileManager(standardManager);
@@ -55,7 +57,7 @@ public class CachedCompilerAdditionalTest {
                     "coverage.Broken",
                     "package coverage; public class Broken { this does not compile }",
                     fileManager);
-            assertTrue("Broken source should not produce classes", classes.isEmpty());
+            assertTrue(classes.isEmpty(), "compileFromJava() must return empty map when source code contains syntax errors and compilation fails");
         }
     }
 
@@ -69,7 +71,7 @@ public class CachedCompilerAdditionalTest {
 
         AtomicBoolean invoked = new AtomicBoolean(false);
         compiler.updateFileManagerForClassLoader(loader, fm -> invoked.set(true));
-        assertTrue("Consumer should be invoked when manager exists", invoked.get());
+        assertTrue(invoked.get(), "updateFileManagerForClassLoader() must invoke consumer when file manager exists for the specified ClassLoader");
     }
 
     @Test
@@ -80,13 +82,13 @@ public class CachedCompilerAdditionalTest {
                 (PrivilegedAction<ClassLoader>) () -> new ClassLoader() {
                 });
         compiler.updateFileManagerForClassLoader(loader, fm -> invoked.set(true));
-        assertFalse("Consumer should not be invoked when manager missing", invoked.get());
+        assertFalse(invoked.get(), "updateFileManagerForClassLoader() must not invoke consumer when no file manager is registered for the ClassLoader");
     }
 
     @Test
     public void closeClosesAllManagedFileManagers() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "ToolProvider.getSystemJavaCompiler() must return a JavaCompiler instance for CachedCompiler to function");
         CachedCompiler cachedCompiler = new CachedCompiler(null, null);
         AtomicBoolean closed = new AtomicBoolean(false);
         cachedCompiler.setFileManagerOverride(standard -> new TrackingFileManager(standard, closed));
@@ -96,52 +98,55 @@ public class CachedCompilerAdditionalTest {
                 });
         cachedCompiler.loadFromJava(loader, "coverage.CloseTarget", "package coverage; public class CloseTarget {}");
         cachedCompiler.close();
-        assertTrue("Close should propagate to file managers", closed.get());
+        assertTrue(closed.get(), "CachedCompiler.close() must propagate close() call to all managed JavaFileManager instances to release resources");
     }
 
     @Test
     public void createDefaultWriterFlushesOnClose() throws Exception {
-        Method factory = CachedCompiler.class.getDeclaredMethod("createDefaultWriter");
-        factory.setAccessible(true);
-        PrintWriter writer = (PrintWriter) factory.invoke(null);
-        writer.println("exercise-default-writer");
-        writer.close(); // ensures the overridden close() path is covered
+        PrintStream originalErr = System.err;
+        TrackingOutputStream capturedErr = new TrackingOutputStream();
+        PrintStream replacementErr = new PrintStream(capturedErr, false, StandardCharsets.UTF_8.name());
+        System.setErr(replacementErr);
+        try {
+            PrintWriter writer = CachedCompiler.createDefaultWriter();
+            writer.print("exercise-default-writer");
+            int flushBeforeClose = capturedErr.flushCalls();
+            writer.close(); // ensures the overridden close() path is covered
+            assertTrue(capturedErr.flushCalls() > flushBeforeClose, "PrintWriter.close() from createDefaultWriter() must flush System.err to ensure buffered diagnostic output is visible");
+            String output = new String(capturedErr.toByteArray(), StandardCharsets.UTF_8);
+            assertTrue(output.contains("exercise-default-writer"), "System.err must contain 'exercise-default-writer' text written via PrintWriter from createDefaultWriter()");
+            assertFalse(capturedErr.isClosed(), "PrintWriter.close() from createDefaultWriter() must not close underlying System.err stream to preserve system error output");
+        } finally {
+            System.setErr(originalErr);
+            replacementErr.close();
+        }
     }
 
     @Test
     public void validateClassNameAllowsDescriptorForms() throws Exception {
-        Method validate = CachedCompiler.class.getDeclaredMethod("validateClassName", String.class);
-        validate.setAccessible(true);
+        CachedCompiler.validateClassName("module-info");
+        CachedCompiler.validateClassName("example.package-info");
+        CachedCompiler.validateClassName("example.deep.package-info");
 
-        validate.invoke(null, "module-info");
-        validate.invoke(null, "example.package-info");
-        validate.invoke(null, "example.deep.package-info");
+        assertThrows(IllegalArgumentException.class,
+                () -> CachedCompiler.validateClassName("example.Invalid-"));
 
-        InvocationTargetException trailingHyphen = assertThrows(InvocationTargetException.class,
-                () -> validate.invoke(null, "example.Invalid-"));
-        assertTrue(trailingHyphen.getCause() instanceof IllegalArgumentException);
+        assertThrows(IllegalArgumentException.class,
+                () -> CachedCompiler.validateClassName("example..impl"));
 
-        InvocationTargetException emptySegment = assertThrows(InvocationTargetException.class,
-                () -> validate.invoke(null, "example..impl"));
-        assertTrue(emptySegment.getCause() instanceof IllegalArgumentException);
-
-        InvocationTargetException invalidCharacter = assertThrows(InvocationTargetException.class,
-                () -> validate.invoke(null, "example.Invalid?Name"));
-        assertTrue(invalidCharacter.getCause() instanceof IllegalArgumentException);
+        assertThrows(IllegalArgumentException.class,
+                () -> CachedCompiler.validateClassName("example.Invalid?Name"));
     }
 
     @Test
     public void safeResolvePreventsPathTraversal() throws Exception {
-        Method method = CachedCompiler.class.getDeclaredMethod("safeResolve", File.class, String.class);
-        method.setAccessible(true);
         Path root = Files.createTempDirectory("cached-compiler-safe");
         try {
-            File resolved = (File) method.invoke(null, root.toFile(), "valid/Name.class");
-            assertTrue(resolved.toPath().startsWith(root));
+            File resolved = CachedCompiler.safeResolve(root.toFile(), "valid/Name.class");
+            assertTrue(resolved.toPath().startsWith(root), "safeResolve() must return path starting with root directory when resolving 'valid/Name.class' to prevent directory traversal attacks");
 
-            InvocationTargetException traversal = assertThrows(InvocationTargetException.class,
-                    () -> method.invoke(null, root.toFile(), "../escape"));
-            assertTrue(traversal.getCause() instanceof IllegalArgumentException);
+            assertThrows(IllegalArgumentException.class,
+                    () -> CachedCompiler.safeResolve(root.toFile(), "../escape"));
         } finally {
             deleteRecursively(root);
         }
@@ -150,7 +155,7 @@ public class CachedCompilerAdditionalTest {
     @Test
     public void writesSourceAndClassFilesWhenDirectoriesProvided() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "ToolProvider.getSystemJavaCompiler() must return a JavaCompiler instance for CachedCompiler to function");
 
         Path sourceDir = Files.createTempDirectory("cached-compiler-src");
         Path classDir = Files.createTempDirectory("cached-compiler-classes");
@@ -167,8 +172,8 @@ public class CachedCompilerAdditionalTest {
 
             Path sourceFile = sourceDir.resolve("coverage/FileOutput.java");
             Path classFile = classDir.resolve("coverage/FileOutput.class");
-            assertTrue("Source file should be emitted", Files.exists(sourceFile));
-            assertTrue("Class file should be emitted", Files.exists(classFile));
+            assertTrue(Files.exists(sourceFile), "CachedCompiler must write 'coverage/FileOutput.java' to source directory when sourceDir is configured");
+            assertTrue(Files.exists(classFile), "CachedCompiler must write compiled 'coverage/FileOutput.class' to class directory when classDir is configured");
             byte[] firstBytes = Files.readAllBytes(classFile);
 
             CachedCompiler secondPass = new CachedCompiler(sourceDir.toFile(), classDir.toFile());
@@ -180,10 +185,10 @@ public class CachedCompilerAdditionalTest {
             secondPass.close();
 
             byte[] updatedBytes = Files.readAllBytes(classFile);
-            assertFalse("Updating the source should change emitted bytecode", Arrays.equals(firstBytes, updatedBytes));
+            assertFalse(Arrays.equals(firstBytes, updatedBytes), "Recompiling 'coverage.FileOutput' with modified source code must produce different bytecode from previous compilation");
 
             Path backupFile = classDir.resolve("coverage/FileOutput.class.bak");
-            assertFalse("Backup should be cleaned up", Files.exists(backupFile));
+            assertFalse(Files.exists(backupFile), "CachedCompiler must remove temporary '.class.bak' backup file after successfully updating 'coverage/FileOutput.class'");
         } finally {
             deleteRecursively(classDir);
             deleteRecursively(sourceDir);
@@ -198,6 +203,44 @@ public class CachedCompilerAdditionalTest {
                 .sorted(Comparator.reverseOrder())
                 .map(Path::toFile)
                 .forEach(File::delete);
+    }
+
+    private static final class TrackingOutputStream extends OutputStream {
+        private final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        private int flushCalls;
+        private boolean closed;
+
+        @Override
+        public void write(int b) {
+            buffer.write(b);
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) {
+            buffer.write(b, off, len);
+        }
+
+        @Override
+        public void flush() {
+            flushCalls++;
+        }
+
+        @Override
+        public void close() {
+            closed = true;
+        }
+
+        int flushCalls() {
+            return flushCalls;
+        }
+
+        boolean isClosed() {
+            return closed;
+        }
+
+        byte[] toByteArray() {
+            return buffer.toByteArray();
+        }
     }
 
     private static final class TrackingFileManager extends MyJavaFileManager {

@@ -21,12 +21,17 @@ import eg.components.BarImpl;
 import eg.components.Foo;
 import eg.components.TeeImpl;
 
-public class FooBarTee2 {
+public class FooBarTee2 implements FooBarTee2ForTest {
     public final String name;
     public final TeeImpl tee;
     public final BarImpl bar;
     public final BarImpl copy;
     public final Foo foo;
+
+    @Override
+    public Foo fooForTest() {
+        return foo;
+    }
 
     public FooBarTee2(String name) {
         // when viewing this file, ensure it is synchronised with the copy on disk.

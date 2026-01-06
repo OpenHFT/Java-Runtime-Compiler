@@ -4,9 +4,9 @@
 package net.openhft.compiler;
 
 import eg.FooBarTee;
+import eg.FooBarTee2ForTest;
 import eg.components.Foo;
-import junit.framework.TestCase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -19,9 +19,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
-public class CompilerTest extends TestCase {
+public class CompilerTest {
     private static final File parent;
     private static final String EG_FOO_BAR_TEE = "eg.FooBarTee";
     private static final int RUNS = 1000 * 1000;
@@ -40,6 +40,7 @@ public class CompilerTest extends TestCase {
         new CompilerTest().test_compiler();
     }
 
+    @Test
     public void test_compiler() throws Throwable {
         // CompilerUtils.setDebug(true);
         // added so the test passes in Maven.
@@ -90,17 +91,18 @@ public class CompilerTest extends TestCase {
                     .getConstructor(String.class)
                     .newInstance("test foo bar tee");
             Foo foo = fooBarTee.foo;
-            assertNotNull(foo);
-            assertEquals(text, foo.s);
+            assertNotNull(foo, "Foo should be initialised after compilation");
+            assertEquals(text, foo.s, "Foo.s should include generated text");
         } catch (ClassNotFoundException cnfe) {
             cnfe.printStackTrace();
             // TODO FIX on teamcity
         }
     }
 
+    @Test
     public void test_fromFile()
             throws ClassNotFoundException, IOException, IllegalAccessException, InstantiationException,
-            NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
+            NoSuchMethodException, InvocationTargetException {
         Class<?> clazz = CompilerUtils.loadFromResource("eg.FooBarTee2", "eg/FooBarTee2.jcf");
         // turn off System.out
         PrintStream out = System.out;
@@ -115,10 +117,10 @@ public class CompilerTest extends TestCase {
             for (int i = -RUNS / 10; i < RUNS; i++) {
                 if (i == 0) start = System.nanoTime();
 
-                Object fooBarTee2 = stringConstructor.newInstance(getName());
-                Foo foo = (Foo) clazz.getDeclaredField("foo").get(fooBarTee2);
-                assertNotNull(foo);
-                assertEquals("load java class from file.", foo.s);
+                FooBarTee2ForTest fooBarTee2 = (FooBarTee2ForTest) stringConstructor.newInstance(getClass().getSimpleName());
+                Foo foo = fooBarTee2.fooForTest();
+                assertNotNull(foo, "Foo should be initialised when loading from resource");
+                assertEquals("load java class from file.", foo.s, "Foo.s should match expected resource string");
             }
             long time = System.nanoTime() - start;
             out.printf("Build build small container %,d ns.%n", time / RUNS);
@@ -127,6 +129,7 @@ public class CompilerTest extends TestCase {
         }
     }
 
+    @Test
     public void test_settingPrintStreamWithCompilerErrors() throws Exception {
         final String output = runWithCapturedStreams(writer -> assertThrows(
                 ClassNotFoundException.class,
@@ -139,19 +142,21 @@ public class CompilerTest extends TestCase {
 
         for (String expectedError : expectedInErrorFromCompiler) {
             String errorMessage = String.format("Does not contain expected '%s' in:%n%s", expectedError, output);
-            assertTrue(errorMessage, output.contains(expectedError));
+            assertTrue(output.contains(expectedError), errorMessage);
         }
     }
 
+    @Test
     public void test_settingPrintStreamWithNoErrors() throws Exception {
         final String output = runWithCapturedStreams(writer ->
                 CompilerUtils.CACHED_COMPILER.loadFromJava(
                         getClass().getClassLoader(), "TestClass", "class TestClass {}",
                         new PrintWriter(writer)));
 
-        assertEquals("compiler output should be empty when there are no errors", "", output);
+        assertEquals("", output, "compiler output should be empty when there are no errors");
     }
 
+    @Test
     public void test_settingPrintStreamWithWarnings() throws Exception {
         final String output = runWithCapturedStreams(writer ->
                 CompilerUtils.CACHED_COMPILER.loadFromJava(
@@ -160,9 +165,10 @@ public class CompilerTest extends TestCase {
                         "class TestClass { int i = new Date().getDay(); }",
                         new PrintWriter(writer)));
 
-        assertEquals("compiler output should be empty even when warnings are emitted", "", output);
+        assertEquals("", output, "compiler output should be empty even when warnings are emitted");
     }
 
+    @Test
     public void test_compilerErrorsDoNotBreakNextCompilations() throws Exception {
         // quieten the compiler output
         PrintWriter quietWriter = new PrintWriter(new OutputStreamWriter(new ByteArrayOutputStream(), StandardCharsets.UTF_8));
@@ -186,8 +192,8 @@ public class CompilerTest extends TestCase {
                         .getDeclaredConstructor()
                         .newInstance();
 
-        assertEquals("S", testClass.getName());
-        assertEquals("ok", callable.call());
+        assertEquals("S", testClass.getName(), "Compiled class should be named S");
+        assertEquals("ok", callable.call(), "Callable should read value from S.s");
     }
 
     @Test
@@ -200,7 +206,7 @@ public class CompilerTest extends TestCase {
             cc.loadFromJava(classLoader, "A", "public class A { static int i = " + i + "; }");
             Class<?> b = cc.loadFromJava(classLoader, "B", "public class B implements net.openhft.compiler.MyIntSupplier { public int get() { return A.i; } }");
             MyIntSupplier bi = (MyIntSupplier) b.getDeclaredConstructor().newInstance();
-            assertEquals(i, bi.get());
+            assertEquals(i, bi.get(), "MyIntSupplier should return A.i for iteration " + i);
         }
     }
 
@@ -232,8 +238,8 @@ public class CompilerTest extends TestCase {
             System.setErr(err);
         }
 
-        assertFalse("should not have written to System.out", usedSysOut.get());
-        assertFalse("should not have written to System.err", usedSysErr.get());
+        assertFalse(usedSysOut.get(), "should not have written to System.out");
+        assertFalse(usedSysErr.get(), "should not have written to System.err");
         return writer.toString();
     }
 

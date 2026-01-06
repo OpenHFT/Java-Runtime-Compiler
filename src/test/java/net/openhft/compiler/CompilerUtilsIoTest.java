@@ -3,14 +3,12 @@
  */
 package net.openhft.compiler;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 import java.io.*;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -18,8 +16,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class CompilerUtilsIoTest {
 
@@ -30,22 +29,19 @@ public class CompilerUtilsIoTest {
         File file = filePath.toFile();
 
         boolean written = CompilerUtils.writeText(file, "hello");
-        assertTrue("First write should report changes", written);
+        assertTrue(written, "First write should report changes");
 
         boolean unchanged = CompilerUtils.writeText(file, "hello");
-        assertFalse("Repeat write with identical content should be treated as unchanged", unchanged);
+        assertFalse(unchanged, "Repeat write with identical content should be treated as unchanged");
 
         boolean changed = CompilerUtils.writeText(file, "different");
-        assertTrue("Modified content should trigger a rewrite", changed);
+        assertTrue(changed, "Modified content should trigger a rewrite");
 
-        Method readBytes = CompilerUtils.class.getDeclaredMethod("readBytes", File.class);
-        readBytes.setAccessible(true);
-        byte[] bytes = (byte[]) readBytes.invoke(null, file);
-        Method decodeUTF8 = CompilerUtils.class.getDeclaredMethod("decodeUTF8", byte[].class);
-        decodeUTF8.setAccessible(true);
-        String decoded = (String) decodeUTF8.invoke(null, bytes);
+        byte[] bytes = CompilerUtils.readBytes(file);
+        assertNotNull(bytes, "Expected bytes to be read");
+        String decoded = CompilerUtils.decodeUTF8(bytes);
 
-        assertEquals("different", decoded);
+        assertEquals("different", decoded, "Decoded bytes should match last write");
     }
 
     @Test
@@ -57,25 +53,22 @@ public class CompilerUtilsIoTest {
         File target = parentFile.resolve("child.bin").toFile();
         IllegalStateException ex = assertThrows(IllegalStateException.class,
                 () -> CompilerUtils.writeBytes(target, new byte[]{1, 2, 3}));
-        assertTrue(ex.getMessage().contains("Unable to create directory"));
+        String message = ex.getMessage();
+        assertNotNull(message, "Expected failure message");
+        assertTrue(message.contains("Unable to create directory"), "Expected 'Unable to create directory' in: " + message);
     }
 
     @Test
     public void encodeDecodeUtf8Matches() throws Exception {
-        Method encode = CompilerUtils.class.getDeclaredMethod("encodeUTF8", String.class);
-        Method decode = CompilerUtils.class.getDeclaredMethod("decodeUTF8", byte[].class);
-        encode.setAccessible(true);
-        decode.setAccessible(true);
-
-        byte[] bytes = (byte[]) encode.invoke(null, "sample-text");
-        String value = (String) decode.invoke(null, bytes);
-        assertEquals("sample-text", value);
+        byte[] bytes = CompilerUtils.encodeUTF8("sample-text");
+        String value = CompilerUtils.decodeUTF8(bytes);
+        assertEquals("sample-text", value, "UTF-8 encode/decode should round-trip");
     }
 
     @Test
     public void defineClassLoadsCompiledBytes() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("JDK compiler required for tests", compiler);
+        assertNotNull(compiler, "JDK compiler required for tests");
         try (StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null)) {
             CachedCompiler cachedCompiler = new CachedCompiler(null, null);
             MyJavaFileManager myJavaFileManager = new MyJavaFileManager(fileManager);
@@ -84,26 +77,26 @@ public class CompilerUtilsIoTest {
                     "package test; public class DefineClassTarget { public String id() { return \"ok\"; } }",
                     myJavaFileManager);
             byte[] bytes = compiled.get("test.DefineClassTarget");
-            assertNotNull(bytes);
+            assertNotNull(bytes, "Expected compiled bytes for DefineClassTarget");
 
             Class<?> clazz = CompilerUtils.defineClass(Thread.currentThread().getContextClassLoader(),
                     "test.DefineClassTarget", bytes);
-            assertEquals("test.DefineClassTarget", clazz.getName());
+            assertEquals("test.DefineClassTarget", clazz.getName(), "Defined class should have expected name");
             Object instance = clazz.getDeclaredConstructor().newInstance();
             String id = (String) clazz.getMethod("id").invoke(instance);
-            assertEquals("ok", id);
+            assertEquals("ok", id, "id() should match compiled source");
 
             Map<String, byte[]> compiledContext = cachedCompiler.compileFromJava(
                     "test.DefineClassTargetContext",
                     "package test; public class DefineClassTargetContext { public String ctx() { return \"ctx\"; } }",
                     myJavaFileManager);
             byte[] contextBytes = compiledContext.get("test.DefineClassTargetContext");
-            assertNotNull(contextBytes);
+            assertNotNull(contextBytes, "Expected compiled bytes for DefineClassTargetContext");
             CompilerUtils.defineClass("test.DefineClassTargetContext", contextBytes);
             Class<?> contextDefined = Class.forName("test.DefineClassTargetContext");
             Object contextInstance = contextDefined.getDeclaredConstructor().newInstance();
             String ctx = (String) contextDefined.getMethod("ctx").invoke(contextInstance);
-            assertEquals("ctx", ctx);
+            assertEquals("ctx", ctx, "ctx() should match compiled source");
         }
     }
 
@@ -111,7 +104,7 @@ public class CompilerUtilsIoTest {
     public void addClassPathHandlesMissingDirectory() {
         Path nonExisting = Paths.get("not-existing-" + System.nanoTime());
         boolean result = CompilerUtils.addClassPath(nonExisting.toString());
-        assertFalse("Missing directories should return false", result);
+        assertFalse(result, "Missing directories should return false");
     }
 
     @Test
@@ -120,9 +113,9 @@ public class CompilerUtilsIoTest {
         String originalClasspath = System.getProperty("java.class.path");
         try {
             boolean added = CompilerUtils.addClassPath(tempDir.toAbsolutePath().toString());
-            assertTrue("Existing directory should be added", added);
+            assertTrue(added, "Existing directory should be added");
             boolean second = CompilerUtils.addClassPath(tempDir.toAbsolutePath().toString());
-            assertTrue("Re-adding the same directory should report true because reset always occurs", second);
+            assertTrue(second, "Re-adding the same directory should report true because reset always occurs");
         } finally {
             System.setProperty("java.class.path", originalClasspath);
         }
@@ -130,67 +123,55 @@ public class CompilerUtilsIoTest {
 
     @Test
     public void readTextInlineShortcutAndReadBytesMissing() throws Exception {
-        Method readText = CompilerUtils.class.getDeclaredMethod("readText", String.class);
-        readText.setAccessible(true);
-        String inline = (String) readText.invoke(null, "=inline");
-        assertEquals("inline", inline);
+        String inline = CompilerUtils.readText("=inline");
+        assertEquals("inline", inline, "Inline readText should drop '=' prefix");
 
-        Method readBytes = CompilerUtils.class.getDeclaredMethod("readBytes", File.class);
-        readBytes.setAccessible(true);
-        Object missing = readBytes.invoke(null, new File("definitely-missing-" + System.nanoTime()));
-        assertNull(missing);
+        Object missing = CompilerUtils.readBytes(new File("definitely-missing-" + System.nanoTime()));
+        assertNull(missing, "Missing file should return null");
 
         Path tempFile = Files.createTempFile("compiler-utils-bytes", ".bin");
         Files.write(tempFile, "bytes".getBytes(StandardCharsets.UTF_8));
-        byte[] present = (byte[]) readBytes.invoke(null, tempFile.toFile());
-        assertEquals("bytes", new String(present, StandardCharsets.UTF_8));
+        byte[] present = CompilerUtils.readBytes(tempFile.toFile());
+        assertEquals("bytes", new String(present, StandardCharsets.UTF_8), "readBytes should return file content");
     }
 
     @Test
     public void closeSwallowsExceptions() throws Exception {
-        Method closeMethod = CompilerUtils.class.getDeclaredMethod("close", Closeable.class);
-        closeMethod.setAccessible(true);
-        closeMethod.invoke(null, (Closeable) () -> {
+        AtomicBoolean invoked = new AtomicBoolean(false);
+        CompilerUtils.close(() -> {
+            invoked.set(true);
             throw new IOException("boom");
         });
+        assertTrue(invoked.get(), "Closeable should be invoked");
     }
 
     @Test
     public void closeIgnoresNullReference() throws Exception {
-        Method closeMethod = CompilerUtils.class.getDeclaredMethod("close", Closeable.class);
-        closeMethod.setAccessible(true);
-        closeMethod.invoke(null, new Object[]{null});
+        CompilerUtils.close(null);
     }
 
     @Test
     public void getInputStreamSupportsInlineContent() throws Exception {
-        Method method = CompilerUtils.class.getDeclaredMethod("getInputStream", String.class);
-        method.setAccessible(true);
-        try (InputStream is = (InputStream) method.invoke(null, "=inline-data")) {
+        try (InputStream is = CompilerUtils.getInputStream("=inline-data")) {
             String value = new String(readFully(is), StandardCharsets.UTF_8);
-            assertEquals("inline-data", value);
+            assertEquals("inline-data", value, "Inline content should be returned");
         }
         Path tempFile = Files.createTempFile("compiler-utils-stream", ".txt");
         Files.write(tempFile, "file-data".getBytes(StandardCharsets.UTF_8));
-        try (InputStream is = (InputStream) method.invoke(null, tempFile.toString())) {
+        try (InputStream is = CompilerUtils.getInputStream(tempFile.toString())) {
             String value = new String(readFully(is), StandardCharsets.UTF_8);
-            assertEquals("file-data", value);
+            assertEquals("file-data", value, "File content should be returned");
         }
     }
 
     @Test
     public void getInputStreamRejectsEmptyFilename() throws Exception {
-        Method method = CompilerUtils.class.getDeclaredMethod("getInputStream", String.class);
-        method.setAccessible(true);
-        InvocationTargetException ex = assertThrows(InvocationTargetException.class,
-                () -> method.invoke(null, ""));
-        assertTrue(ex.getCause() instanceof IllegalArgumentException);
+        assertThrows(IllegalArgumentException.class,
+                () -> CompilerUtils.getInputStream(""));
     }
 
     @Test
     public void getInputStreamUsesSlashFallback() throws Exception {
-        Method method = CompilerUtils.class.getDeclaredMethod("getInputStream", String.class);
-        method.setAccessible(true);
         ClassLoader original = Thread.currentThread().getContextClassLoader();
         ClassLoader loader = AccessController.doPrivileged(
                 (PrivilegedAction<ClassLoader>) () -> new ClassLoader(original) {
@@ -203,8 +184,8 @@ public class CompilerUtilsIoTest {
                 }
         });
         Thread.currentThread().setContextClassLoader(loader);
-        try (InputStream is = (InputStream) method.invoke(null, "fallback-resource")) {
-            assertEquals("fallback", new String(readFully(is), StandardCharsets.UTF_8));
+        try (InputStream is = CompilerUtils.getInputStream("fallback-resource")) {
+            assertEquals("fallback", new String(readFully(is), StandardCharsets.UTF_8), "Should fall back to leading slash lookup");
         } finally {
             Thread.currentThread().setContextClassLoader(original);
         }
@@ -221,20 +202,18 @@ public class CompilerUtilsIoTest {
         Path tempDir = Files.createTempDirectory("compiler-utils-parent");
         Path nested = tempDir.resolve("nested").resolve("file.bin");
         boolean changed = CompilerUtils.writeBytes(nested.toFile(), new byte[]{10, 20, 30});
-        assertTrue("Path with missing parents should be created", changed);
-        assertTrue(Files.exists(nested));
+        assertTrue(changed, "Path with missing parents should be created");
+        assertTrue(Files.exists(nested), "Written file should exist");
     }
 
     @Test
     public void readBytesRejectsDirectories() throws Exception {
-        Method readBytes = CompilerUtils.class.getDeclaredMethod("readBytes", File.class);
-        readBytes.setAccessible(true);
         Path tempDir = Files.createTempDirectory("compiler-utils-dir");
-        InvocationTargetException ex = assertThrows(InvocationTargetException.class,
-                () -> readBytes.invoke(null, tempDir.toFile()));
-        assertTrue(ex.getCause() instanceof IllegalStateException);
-        String message = ex.getCause().getMessage();
-        assertTrue(message.contains("Unable to determine size") || message.contains("Unable to read file"));
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> CompilerUtils.readBytes(tempDir.toFile()));
+        String message = ex.getMessage();
+        assertNotNull(message, "Expected a message for directory read failure");
+        assertTrue(message.contains("Unable to read file"), "Unexpected message: " + message);
     }
 
     private static byte[] readFully(InputStream inputStream) throws IOException {

@@ -3,13 +3,13 @@
  */
 package net.openhft.compiler;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class AiRuntimeGuardrailsTest {
 
@@ -45,12 +45,12 @@ public class AiRuntimeGuardrailsTest {
         assertThrows(ValidationException.class,
                 () -> pipeline.compile("agent-A", "BadClass", "class BadClass { void x() { System.exit(0); } }"));
 
-        assertEquals("Compilation must not run after validation rejection", 0, compileInvocations.get());
-        assertEquals(1, telemetry.compileAttempts("agent-A"));
-        assertEquals(1, telemetry.validationFailures("agent-A"));
-        assertEquals(0, telemetry.successes("agent-A"));
-        assertEquals(0, telemetry.compileFailures("agent-A"));
-        assertFalse("Latency should not be recorded for rejected source", telemetry.hasLatency("agent-A"));
+        assertEquals(0, compileInvocations.get(), "compilation must not run after validation rejection");
+        assertEquals(1, telemetry.compileAttempts("agent-A"), "validation failure should still count as a compile attempt");
+        assertEquals(1, telemetry.validationFailures("agent-A"), "rejected source code should increment validation failure counter");
+        assertEquals(0, telemetry.successes("agent-A"), "failed validation should not be counted as a successful compilation");
+        assertEquals(0, telemetry.compileFailures("agent-A"), "validation failures should be tracked separately from compilation failures");
+        assertFalse(telemetry.hasLatency("agent-A"), "latency should not be recorded for rejected source");
     }
 
     @Test
@@ -69,15 +69,15 @@ public class AiRuntimeGuardrailsTest {
         final Class<?> clazz = pipeline.compile("agent-B", "OkClass",
                 "public class OkClass { public int add(int a, int b) { return a + b; } }");
 
-        assertEquals("agent-B should see exactly one attempt", 1, telemetry.compileAttempts("agent-B"));
-        assertEquals(0, telemetry.validationFailures("agent-B"));
-        assertEquals(1, telemetry.successes("agent-B"));
-        assertEquals(0, telemetry.compileFailures("agent-B"));
-        assertTrue("Latency must be captured for successful compilation", telemetry.hasLatency("agent-B"));
+        assertEquals(1, telemetry.compileAttempts("agent-B"), "single compilation request should register exactly one attempt");
+        assertEquals(0, telemetry.validationFailures("agent-B"), "valid source code should not trigger any validation failures");
+        assertEquals(1, telemetry.successes("agent-B"), "successful compilation should increment success counter");
+        assertEquals(0, telemetry.compileFailures("agent-B"), "successful compilation should not record any failures");
+        assertTrue(telemetry.hasLatency("agent-B"), "latency must be captured for successful compilation");
 
         Object instance = clazz.getDeclaredConstructor().newInstance();
         int sum = (int) clazz.getMethod("add", int.class, int.class).invoke(instance, 2, 3);
-        assertEquals(5, sum);
+        assertEquals(5, sum, "compiled class should execute correctly to verify compilation produced working bytecode");
     }
 
     @Test
@@ -97,13 +97,13 @@ public class AiRuntimeGuardrailsTest {
         final Class<?> first = pipeline.compile("agent-C", "CacheCandidate", source);
         final Class<?> second = pipeline.compile("agent-C", "CacheCandidate", source);
 
-        assertEquals("Underlying compiler should only run once thanks to caching", 1, rawCompileCount.get());
-        assertEquals(2, telemetry.compileAttempts("agent-C"));
-        assertEquals(0, telemetry.validationFailures("agent-C"));
-        assertEquals(1, telemetry.successes("agent-C"));
-        assertEquals(0, telemetry.compileFailures("agent-C"));
-        assertEquals("Cache hit count should be tracked", 1, telemetry.cacheHits("agent-C"));
-        assertSame(first, second);
+        assertEquals(1, rawCompileCount.get(), "underlying compiler should only run once thanks to caching");
+        assertEquals(2, telemetry.compileAttempts("agent-C"), "both compilation requests should be counted even when one is a cache hit");
+        assertEquals(0, telemetry.validationFailures("agent-C"), "identical valid source should not trigger validation failures");
+        assertEquals(1, telemetry.successes("agent-C"), "only the initial compilation should count as success, not the cache hit");
+        assertEquals(0, telemetry.compileFailures("agent-C"), "cache hit should not be treated as a compilation failure");
+        assertEquals(1, telemetry.cacheHits("agent-C"), "second request for identical source should register as cache hit");
+        assertSame(first, second, "cache hit should return the same class instance");
     }
 
     @Test
@@ -124,11 +124,11 @@ public class AiRuntimeGuardrailsTest {
         assertThrows(ClassNotFoundException.class,
                 () -> pipeline.compile("agent-D", "Broken", "public class Broken { }"));
 
-        assertEquals(1, telemetry.compileAttempts("agent-D"));
-        assertEquals(0, telemetry.validationFailures("agent-D"));
-        assertEquals(0, telemetry.successes("agent-D"));
-        assertEquals(1, telemetry.compileFailures("agent-D"));
-        assertFalse("Failure should not record cache hits", telemetry.hasCacheHits("agent-D"));
+        assertEquals(1, telemetry.compileAttempts("agent-D"), "compilation request should be counted even when it fails");
+        assertEquals(0, telemetry.validationFailures("agent-D"), "compiler failure should not be confused with validation failure");
+        assertEquals(0, telemetry.successes("agent-D"), "failed compilation should not increment success counter");
+        assertEquals(1, telemetry.compileFailures("agent-D"), "compiler exception should be tracked as compilation failure");
+        assertFalse(telemetry.hasCacheHits("agent-D"), "failure should not record cache hits");
     }
 
     private static final class GuardrailedCompilerPipeline {

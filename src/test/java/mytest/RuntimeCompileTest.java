@@ -5,7 +5,7 @@ package mytest;
 
 import net.openhft.compiler.CachedCompiler;
 import net.openhft.compiler.CompilerUtils;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -20,8 +20,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntSupplier;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class RuntimeCompileTest {
     private static final String code = "package mytest;\n" +
@@ -42,9 +42,9 @@ public class RuntimeCompileTest {
         consumer.accept(1); // ok
         try {
             consumer.accept(128); // no ok
-            fail();
+            fail("Expected IllegalArgumentException for accept(128)");
         } catch (IllegalArgumentException expected) {
-            assertEquals("Unexpected exception type", IllegalArgumentException.class, expected.getClass());
+            assertEquals(IllegalArgumentException.class, expected.getClass(), "Unexpected exception type");
         }
     }
 
@@ -92,6 +92,6 @@ public class RuntimeCompileTest {
             f.get(10, TimeUnit.SECONDS);
         Class<?> aClass = cc.loadFromJava(cl, "mytest.Test2", code2);
         IntSupplier consumer = (IntSupplier) aClass.getDeclaredConstructor().newInstance();
-        assertEquals(nThreads, consumer.getAsInt());
+        assertEquals(nThreads, consumer.getAsInt(), "called count should match thread count");
     }
 }

@@ -319,7 +319,7 @@ public class CachedCompiler implements Closeable {
                 : new MyJavaFileManager(fm);
     }
 
-    private static void validateClassName(String className) {
+    static void validateClassName(String className) {
         Objects.requireNonNull(className, "className");
         if (!CLASS_NAME_PATTERN.matcher(className).matches()) {
             throw new IllegalArgumentException("Invalid class name: " + className);
@@ -342,7 +342,7 @@ public class CachedCompiler implements Closeable {
         return candidate.toFile();
     }
 
-    private static PrintWriter createDefaultWriter() {
+    static PrintWriter createDefaultWriter() {
         OutputStreamWriter writer = new OutputStreamWriter(System.err, StandardCharsets.UTF_8);
         return new PrintWriter(writer, true) {
             @Override
