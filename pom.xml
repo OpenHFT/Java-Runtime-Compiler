@@ -12,11 +12,11 @@
         <groupId>net.openhft</groupId>
         <artifactId>java-parent-pom</artifactId>
         <version>2026.0</version>
-        <relativePath/>
+        <relativePath />
     </parent>
 
     <artifactId>compiler</artifactId>
-    <version>2026.0-SNAPSHOT</version>
+    <version>2026.0</version>
     <packaging>bundle</packaging>
 
     <name>OpenHFT/Java-Runtime-Compiler</name>
@@ -179,7 +179,7 @@
         <connection>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git</connection>
         <developerConnection>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git
         </developerConnection>
-        <tag>ea</tag>
+        <tag>compiler-2026.0</tag>
     </scm>
 
 </project>
