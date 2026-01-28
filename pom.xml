@@ -16,7 +16,7 @@
     </parent>
 
     <artifactId>compiler</artifactId>
-    <version>2026.0</version>
+    <version>2026.1-SNAPSHOT</version>
     <packaging>bundle</packaging>
 
     <name>OpenHFT/Java-Runtime-Compiler</name>
@@ -179,7 +179,7 @@
         <connection>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git</connection>
         <developerConnection>scm:git:git@github.com:OpenHFT/Java-Runtime-Compiler.git
         </developerConnection>
-        <tag>compiler-2026.0</tag>
+        <tag>ea</tag>
     </scm>
 
 </project>
