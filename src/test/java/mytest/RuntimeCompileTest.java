@@ -5,7 +5,7 @@ package mytest;
 
 import net.openhft.compiler.CachedCompiler;
 import net.openhft.compiler.CompilerUtils;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -18,8 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntSupplier;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class RuntimeCompileTest {
     private static String code = "package mytest;\n" +
@@ -44,7 +43,6 @@ public class RuntimeCompileTest {
         }
     }
 
-    //@Ignore("see https://teamcity.chronicle.software/viewLog.html?buildId=639347&tab=buildResultsDiv&buildTypeId=OpenHFT_BuildAll_BuildJava11compileJava11")
     @Test
     public void testMultiThread() throws Exception {
         StringBuilder largeClass = new StringBuilder("package mytest;\n" +
