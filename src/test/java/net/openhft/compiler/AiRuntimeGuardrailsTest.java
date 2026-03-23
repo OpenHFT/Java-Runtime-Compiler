@@ -3,13 +3,13 @@
  */
 package net.openhft.compiler;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class AiRuntimeGuardrailsTest {
 
@@ -51,12 +51,12 @@ public class AiRuntimeGuardrailsTest {
             fail("Unexpected checked exception: " + unexpected.getMessage());
         }
 
-        assertEquals("Compilation must not run after validation rejection", 0, compileInvocations.get());
+        assertEquals(0, compileInvocations.get(), "Compilation must not run after validation rejection");
         assertEquals(1, telemetry.compileAttempts("agent-A"));
         assertEquals(1, telemetry.validationFailures("agent-A"));
         assertEquals(0, telemetry.successes("agent-A"));
         assertEquals(0, telemetry.compileFailures("agent-A"));
-        assertFalse("Latency should not be recorded for rejected source", telemetry.hasLatency("agent-A"));
+        assertFalse(telemetry.hasLatency("agent-A"), "Latency should not be recorded for rejected source");
     }
 
     @Test
@@ -75,11 +75,11 @@ public class AiRuntimeGuardrailsTest {
         Class<?> clazz = pipeline.compile("agent-B", "OkClass",
                 "public class OkClass { public int add(int a, int b) { return a + b; } }");
 
-        assertEquals("agent-B should see exactly one attempt", 1, telemetry.compileAttempts("agent-B"));
+        assertEquals(1, telemetry.compileAttempts("agent-B"), "agent-B should see exactly one attempt");
         assertEquals(0, telemetry.validationFailures("agent-B"));
         assertEquals(1, telemetry.successes("agent-B"));
         assertEquals(0, telemetry.compileFailures("agent-B"));
-        assertTrue("Latency must be captured for successful compilation", telemetry.hasLatency("agent-B"));
+        assertTrue(telemetry.hasLatency("agent-B"), "Latency must be captured for successful compilation");
 
         Object instance = clazz.getDeclaredConstructor().newInstance();
         int sum = (int) clazz.getMethod("add", int.class, int.class).invoke(instance, 2, 3);
@@ -103,12 +103,12 @@ public class AiRuntimeGuardrailsTest {
         Class<?> first = pipeline.compile("agent-C", "CacheCandidate", source);
         Class<?> second = pipeline.compile("agent-C", "CacheCandidate", source);
 
-        assertEquals("Underlying compiler should only run once thanks to caching", 1, rawCompileCount.get());
+        assertEquals(1, rawCompileCount.get(), "Underlying compiler should only run once thanks to caching");
         assertEquals(2, telemetry.compileAttempts("agent-C"));
         assertEquals(0, telemetry.validationFailures("agent-C"));
         assertEquals(1, telemetry.successes("agent-C"));
         assertEquals(0, telemetry.compileFailures("agent-C"));
-        assertEquals("Cache hit count should be tracked", 1, telemetry.cacheHits("agent-C"));
+        assertEquals(1, telemetry.cacheHits("agent-C"), "Cache hit count should be tracked");
         assertTrue(first == second);
     }
 
@@ -140,7 +140,7 @@ public class AiRuntimeGuardrailsTest {
         assertEquals(0, telemetry.validationFailures("agent-D"));
         assertEquals(0, telemetry.successes("agent-D"));
         assertEquals(1, telemetry.compileFailures("agent-D"));
-        assertFalse("Failure should not record cache hits", telemetry.hasCacheHits("agent-D"));
+        assertFalse(telemetry.hasCacheHits("agent-D"), "Failure should not record cache hits");
     }
 
     private static final class GuardrailedCompilerPipeline {

@@ -3,10 +3,9 @@
  */
 package net.openhft.compiler;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.tools.FileObject;
-import javax.tools.ForwardingJavaFileManager;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.SimpleJavaFileObject;
@@ -27,14 +26,14 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class MyJavaFileManagerTest {
 
     @Test
     public void bufferedClassReturnedFromInput() throws IOException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
             MyJavaFileManager manager = new MyJavaFileManager(delegate);
 
@@ -53,7 +52,7 @@ public class MyJavaFileManagerTest {
             }
 
             manager.clearBuffers();
-            assertTrue("Buffers should be cleared", manager.getAllBuffers().isEmpty());
+            assertTrue(manager.getAllBuffers().isEmpty(), "Buffers should be cleared");
 
             // Delegate path for non CLASS_OUTPUT locations
             manager.getJavaFileForInput(StandardLocation.CLASS_PATH,
@@ -64,7 +63,7 @@ public class MyJavaFileManagerTest {
     @Test
     public void getJavaFileForInputDelegatesWhenBufferMissing() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager base = compiler.getStandardFileManager(null, null, null)) {
             AtomicBoolean delegated = new AtomicBoolean(false);
             JavaFileObject expected = new SimpleJavaFileObject(URI.create("string:///expected"), JavaFileObject.Kind.CLASS) {
@@ -97,15 +96,15 @@ public class MyJavaFileManagerTest {
 
             JavaFileObject result = manager.getJavaFileForInput(StandardLocation.CLASS_OUTPUT,
                     "example.KindMismatch", JavaFileObject.Kind.SOURCE);
-            assertTrue("Delegate should be consulted when buffer missing", delegated.get());
-            assertTrue("Result should match delegate outcome", result == expected);
+            assertTrue(delegated.get(), "Delegate should be consulted when buffer missing");
+            assertTrue(result == expected, "Result should match delegate outcome");
         }
     }
 
     @Test
     public void delegatingMethodsPassThroughToUnderlyingManager() throws IOException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager base = compiler.getStandardFileManager(null, null, null)) {
             MyJavaFileManager manager = new MyJavaFileManager(base);
 
@@ -131,7 +130,7 @@ public class MyJavaFileManagerTest {
     @Test
     public void listLocationsForModulesAndInferModuleNameDeferToDelegate() throws IOException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
             MyJavaFileManager manager = new MyJavaFileManager(delegate);
             javax.tools.JavaFileManager.Location modulesLocation = resolveSystemModules();
@@ -157,7 +156,7 @@ public class MyJavaFileManagerTest {
     @Test
     public void invokeNamedMethodHandlesMissingMethods() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
             MyJavaFileManager manager = new MyJavaFileManager(delegate);
             java.lang.reflect.Method method = MyJavaFileManager.class.getDeclaredMethod(
@@ -175,7 +174,7 @@ public class MyJavaFileManagerTest {
     @Test
     public void invokeNamedMethodWrapsInvocationFailures() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager base = compiler.getStandardFileManager(null, null, null)) {
             StandardJavaFileManager proxy = (StandardJavaFileManager) Proxy.newProxyInstance(
                     StandardJavaFileManager.class.getClassLoader(),
@@ -202,8 +201,8 @@ public class MyJavaFileManagerTest {
                 if (cause instanceof InvocationTargetException) {
                     cause = ((InvocationTargetException) cause).getCause();
                 }
-                assertTrue("Unexpected cause: " + cause,
-                        cause instanceof UnsupportedOperationException || cause instanceof IOException);
+                assertTrue(cause instanceof UnsupportedOperationException || cause instanceof IOException,
+                        "Unexpected cause: " + cause);
             }
         }
     }
@@ -212,7 +211,7 @@ public class MyJavaFileManagerTest {
     @SuppressWarnings("unchecked")
     public void getAllBuffersSkipsEntriesWhenFutureFails() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
             MyJavaFileManager manager = new MyJavaFileManager(delegate);
             Field buffersField = MyJavaFileManager.class.getDeclaredField("buffers");
@@ -224,7 +223,7 @@ public class MyJavaFileManagerTest {
                 buffers.put("coverage.Faulty", faulty);
             }
             Map<String, byte[]> collected = manager.getAllBuffers();
-            assertTrue("Faulty entries should be skipped when the close future fails", collected.isEmpty());
+            assertTrue(collected.isEmpty(), "Faulty entries should be skipped when the close future fails");
         }
     }
 

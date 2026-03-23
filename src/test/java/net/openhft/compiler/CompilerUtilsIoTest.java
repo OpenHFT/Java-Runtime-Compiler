@@ -3,7 +3,7 @@
  */
 package net.openhft.compiler;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
@@ -17,7 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class CompilerUtilsIoTest {
 
@@ -28,13 +28,13 @@ public class CompilerUtilsIoTest {
         File file = filePath.toFile();
 
         boolean written = CompilerUtils.writeText(file, "hello");
-        assertTrue("First write should report changes", written);
+        assertTrue(written, "First write should report changes");
 
         boolean unchanged = CompilerUtils.writeText(file, "hello");
-        assertTrue("Repeat write with identical content should be treated as unchanged", !unchanged);
+        assertTrue(!unchanged, "Repeat write with identical content should be treated as unchanged");
 
         boolean changed = CompilerUtils.writeText(file, "different");
-        assertTrue("Modified content should trigger a rewrite", changed);
+        assertTrue(changed, "Modified content should trigger a rewrite");
 
         Method readBytes = CompilerUtils.class.getDeclaredMethod("readBytes", File.class);
         readBytes.setAccessible(true);
@@ -73,7 +73,7 @@ public class CompilerUtilsIoTest {
     @Test
     public void defineClassLoadsCompiledBytes() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("JDK compiler required for tests", compiler);
+        assertNotNull(compiler, "JDK compiler required for tests");
         try (StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null)) {
             CachedCompiler cachedCompiler = new CachedCompiler(null, null);
             MyJavaFileManager myJavaFileManager = new MyJavaFileManager(fileManager);
@@ -109,7 +109,7 @@ public class CompilerUtilsIoTest {
     public void addClassPathHandlesMissingDirectory() {
         Path nonExisting = Paths.get("not-existing-" + System.nanoTime());
         boolean result = CompilerUtils.addClassPath(nonExisting.toString());
-        assertTrue("Missing directories should return false", !result);
+        assertTrue(!result, "Missing directories should return false");
     }
 
     @Test
@@ -118,9 +118,9 @@ public class CompilerUtilsIoTest {
         String originalClasspath = System.getProperty("java.class.path");
         try {
             boolean added = CompilerUtils.addClassPath(tempDir.toAbsolutePath().toString());
-            assertTrue("Existing directory should be added", added);
+            assertTrue(added, "Existing directory should be added");
             boolean second = CompilerUtils.addClassPath(tempDir.toAbsolutePath().toString());
-            assertTrue("Re-adding the same directory should report true because reset always occurs", second);
+            assertTrue(second, "Re-adding the same directory should report true because reset always occurs");
         } finally {
             System.setProperty("java.class.path", originalClasspath);
         }
@@ -218,7 +218,7 @@ public class CompilerUtilsIoTest {
         Path tempDir = Files.createTempDirectory("compiler-utils-parent");
         Path nested = tempDir.resolve("nested").resolve("file.bin");
         boolean changed = CompilerUtils.writeBytes(nested.toFile(), new byte[]{10, 20, 30});
-        assertTrue("Path with missing parents should be created", changed);
+        assertTrue(changed, "Path with missing parents should be created");
         assertTrue(Files.exists(nested));
     }
 

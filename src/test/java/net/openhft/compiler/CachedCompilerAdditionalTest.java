@@ -3,7 +3,7 @@
  */
 package net.openhft.compiler;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
@@ -20,14 +20,14 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class CachedCompilerAdditionalTest {
 
     @Test
     public void compileFromJavaReturnsBytecode() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required");
 
         try (StandardJavaFileManager standardManager = compiler.getStandardFileManager(null, null, null)) {
             CachedCompiler cachedCompiler = new CachedCompiler(null, null);
@@ -45,7 +45,7 @@ public class CachedCompilerAdditionalTest {
     @Test
     public void compileFromJavaReturnsEmptyMapOnFailure() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager standardManager = compiler.getStandardFileManager(null, null, null)) {
             CachedCompiler cachedCompiler = new CachedCompiler(null, null);
             MyJavaFileManager fileManager = new MyJavaFileManager(standardManager);
@@ -53,7 +53,7 @@ public class CachedCompilerAdditionalTest {
                     "coverage.Broken",
                     "package coverage; public class Broken { this does not compile }",
                     fileManager);
-            assertTrue("Broken source should not produce classes", classes.isEmpty());
+            assertTrue(classes.isEmpty(), "Broken source should not produce classes");
         }
     }
 
@@ -66,7 +66,7 @@ public class CachedCompilerAdditionalTest {
 
         AtomicBoolean invoked = new AtomicBoolean(false);
         compiler.updateFileManagerForClassLoader(loader, fm -> invoked.set(true));
-        assertTrue("Consumer should be invoked when manager exists", invoked.get());
+        assertTrue(invoked.get(), "Consumer should be invoked when manager exists");
     }
 
     @Test
@@ -75,13 +75,13 @@ public class CachedCompilerAdditionalTest {
         AtomicBoolean invoked = new AtomicBoolean(false);
         compiler.updateFileManagerForClassLoader(new ClassLoader() {
         }, fm -> invoked.set(true));
-        assertTrue("Consumer should not be invoked when manager missing", !invoked.get());
+        assertTrue(!invoked.get(), "Consumer should not be invoked when manager missing");
     }
 
     @Test
     public void closeClosesAllManagedFileManagers() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required");
         CachedCompiler cachedCompiler = new CachedCompiler(null, null);
         AtomicBoolean closed = new AtomicBoolean(false);
         cachedCompiler.setFileManagerOverride(standard -> new TrackingFileManager(standard, closed));
@@ -90,7 +90,7 @@ public class CachedCompilerAdditionalTest {
         };
         cachedCompiler.loadFromJava(loader, "coverage.CloseTarget", "package coverage; public class CloseTarget {}");
         cachedCompiler.close();
-        assertTrue("Close should propagate to file managers", closed.get());
+        assertTrue(closed.get(), "Close should propagate to file managers");
     }
 
     @Test
@@ -144,7 +144,7 @@ public class CachedCompilerAdditionalTest {
     @Test
     public void writesSourceAndClassFilesWhenDirectoriesProvided() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
+        assertNotNull(compiler, "System compiler required");
 
         Path sourceDir = Files.createTempDirectory("cached-compiler-src");
         Path classDir = Files.createTempDirectory("cached-compiler-classes");
@@ -160,8 +160,8 @@ public class CachedCompilerAdditionalTest {
 
             Path sourceFile = sourceDir.resolve("coverage/FileOutput.java");
             Path classFile = classDir.resolve("coverage/FileOutput.class");
-            assertTrue("Source file should be emitted", Files.exists(sourceFile));
-            assertTrue("Class file should be emitted", Files.exists(classFile));
+            assertTrue(Files.exists(sourceFile), "Source file should be emitted");
+            assertTrue(Files.exists(classFile), "Class file should be emitted");
             byte[] firstBytes = Files.readAllBytes(classFile);
 
             CachedCompiler secondPass = new CachedCompiler(sourceDir.toFile(), classDir.toFile());
@@ -172,10 +172,10 @@ public class CachedCompilerAdditionalTest {
             secondPass.close();
 
             byte[] updatedBytes = Files.readAllBytes(classFile);
-            assertTrue("Updating the source should change emitted bytecode", !Arrays.equals(firstBytes, updatedBytes));
+            assertTrue(!Arrays.equals(firstBytes, updatedBytes), "Updating the source should change emitted bytecode");
 
             Path backupFile = classDir.resolve("coverage/FileOutput.class.bak");
-            assertTrue("Backup should be cleaned up", !Files.exists(backupFile));
+            assertTrue(!Files.exists(backupFile), "Backup should be cleaned up");
         } finally {
             deleteRecursively(classDir);
             deleteRecursively(sourceDir);
