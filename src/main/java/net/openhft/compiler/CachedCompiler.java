@@ -210,7 +210,6 @@ public class CachedCompiler implements Closeable {
         }
     }
 
-
     /**
      * Compile and load using a specific class loader and writer. The
      * compilation result is cached against the loader for future calls.
