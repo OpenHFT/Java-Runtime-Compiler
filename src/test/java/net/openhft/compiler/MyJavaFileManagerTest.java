@@ -28,10 +28,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class MyJavaFileManagerTest {
+class MyJavaFileManagerTest {
 
     @Test
-    public void bufferedClassReturnedFromInput() throws IOException {
+    void bufferedClassReturnedFromInput() throws IOException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
@@ -61,7 +61,7 @@ public class MyJavaFileManagerTest {
     }
 
     @Test
-    public void getJavaFileForInputDelegatesWhenBufferMissing() throws Exception {
+    void getJavaFileForInputDelegatesWhenBufferMissing() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager base = compiler.getStandardFileManager(null, null, null)) {
@@ -102,7 +102,7 @@ public class MyJavaFileManagerTest {
     }
 
     @Test
-    public void delegatingMethodsPassThroughToUnderlyingManager() throws IOException {
+    void delegatingMethodsPassThroughToUnderlyingManager() throws IOException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager base = compiler.getStandardFileManager(null, null, null)) {
@@ -128,7 +128,7 @@ public class MyJavaFileManagerTest {
     }
 
     @Test
-    public void listLocationsForModulesAndInferModuleNameDeferToDelegate() throws IOException {
+    void listLocationsForModulesAndInferModuleNameDeferToDelegate() throws IOException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
@@ -154,7 +154,7 @@ public class MyJavaFileManagerTest {
     }
 
     @Test
-    public void invokeNamedMethodHandlesMissingMethods() throws Exception {
+    void invokeNamedMethodHandlesMissingMethods() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
@@ -172,7 +172,7 @@ public class MyJavaFileManagerTest {
     }
 
     @Test
-    public void invokeNamedMethodWrapsInvocationFailures() throws Exception {
+    void invokeNamedMethodWrapsInvocationFailures() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager base = compiler.getStandardFileManager(null, null, null)) {
@@ -209,7 +209,7 @@ public class MyJavaFileManagerTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void getAllBuffersSkipsEntriesWhenFutureFails() throws Exception {
+    void getAllBuffersSkipsEntriesWhenFutureFails() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {

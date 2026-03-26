@@ -11,10 +11,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class AiRuntimeGuardrailsTest {
+class AiRuntimeGuardrailsTest {
 
     @Test
-    public void validatorStopsCompilationAndRecordsFailure() {
+    void validatorStopsCompilationAndRecordsFailure() {
         AtomicInteger compileInvocations = new AtomicInteger();
         TelemetryProbe telemetry = new TelemetryProbe();
         GuardrailedCompilerPipeline pipeline = new GuardrailedCompilerPipeline(
@@ -60,7 +60,7 @@ public class AiRuntimeGuardrailsTest {
     }
 
     @Test
-    public void successfulCompilationRecordsMetrics() throws Exception {
+    void successfulCompilationRecordsMetrics() throws Exception {
         TelemetryProbe telemetry = new TelemetryProbe();
         GuardrailedCompilerPipeline pipeline = new GuardrailedCompilerPipeline(
                 Collections.singletonList(source -> {
@@ -87,7 +87,7 @@ public class AiRuntimeGuardrailsTest {
     }
 
     @Test
-    public void cacheHitDoesNotRecompileButRecordsMetric() throws Exception {
+    void cacheHitDoesNotRecompileButRecordsMetric() throws Exception {
         AtomicInteger rawCompileCount = new AtomicInteger();
         TelemetryProbe telemetry = new TelemetryProbe();
         GuardrailedCompilerPipeline pipeline = new GuardrailedCompilerPipeline(
@@ -113,7 +113,7 @@ public class AiRuntimeGuardrailsTest {
     }
 
     @Test
-    public void compilerFailureRecordedSeparately() {
+    void compilerFailureRecordedSeparately() {
         TelemetryProbe telemetry = new TelemetryProbe();
         GuardrailedCompilerPipeline pipeline = new GuardrailedCompilerPipeline(
                 Collections.singletonList(source -> {

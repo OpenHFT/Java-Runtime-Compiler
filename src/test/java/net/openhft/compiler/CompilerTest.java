@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class CompilerTest {
+class CompilerTest {
     private static final File parent;
     private static final String EG_FOO_BAR_TEE = "eg.FooBarTee";
     private static final int RUNS = 1000 * 1000;
@@ -38,7 +38,7 @@ public class CompilerTest {
     }
 
     @Test
-    public void test_compiler() throws Throwable {
+    void test_compiler() throws Throwable {
         // CompilerUtils.setDebug(true);
         // added so the test passes in Maven.
         CompilerUtils.addClassPath("target/test-classes");
@@ -97,7 +97,7 @@ public class CompilerTest {
     }
 
     @Test
-    public void test_fromFile()
+    void test_fromFile()
             throws ClassNotFoundException, IOException, IllegalAccessException, InstantiationException,
             NoSuchMethodException, InvocationTargetException, NoSuchFieldException {
         Class<?> clazz = CompilerUtils.loadFromResource("eg.FooBarTee2", "eg/FooBarTee2.jcf");
@@ -127,7 +127,7 @@ public class CompilerTest {
     }
 
     @Test
-    public void test_settingPrintStreamWithCompilerErrors() throws Exception {
+    void test_settingPrintStreamWithCompilerErrors() throws Exception {
         final AtomicBoolean usedSysOut = new AtomicBoolean(false);
         final AtomicBoolean usedSysErr = new AtomicBoolean(false);
 
@@ -173,7 +173,7 @@ public class CompilerTest {
     }
 
     @Test
-    public void test_settingPrintStreamWithNoErrors() throws Exception {
+    void test_settingPrintStreamWithNoErrors() throws Exception {
         final AtomicBoolean usedSysOut = new AtomicBoolean(false);
         final AtomicBoolean usedSysErr = new AtomicBoolean(false);
 
@@ -209,7 +209,7 @@ public class CompilerTest {
     }
 
     @Test
-    public void test_settingPrintStreamWithWarnings() throws Exception {
+    void test_settingPrintStreamWithWarnings() throws Exception {
         final AtomicBoolean usedSysOut = new AtomicBoolean(false);
         final AtomicBoolean usedSysErr = new AtomicBoolean(false);
 
@@ -247,7 +247,7 @@ public class CompilerTest {
     }
 
     @Test
-    public void test_compilerErrorsDoNotBreakNextCompilations() throws Exception {
+    void test_compilerErrorsDoNotBreakNextCompilations() throws Exception {
         // quieten the compiler output
         PrintWriter quietWriter = new PrintWriter(new StringWriter());
 
@@ -279,7 +279,7 @@ public class CompilerTest {
     }
 
     @Test
-    public void testNewCompiler() throws Exception {
+    void testNewCompiler() throws Exception {
         for (int i = 1; i <= 3; i++) {
             ClassLoader classLoader = new ClassLoader() {
             };

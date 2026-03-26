@@ -19,10 +19,10 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class CompilerUtilsIoTest {
+class CompilerUtilsIoTest {
 
     @Test
-    public void writeTextDetectsNoChangeAndReadBytesMatches() throws Exception {
+    void writeTextDetectsNoChangeAndReadBytesMatches() throws Exception {
         Path tempDir = Files.createTempDirectory("compiler-utils-io");
         Path filePath = tempDir.resolve("sample.txt");
         File file = filePath.toFile();
@@ -47,7 +47,7 @@ public class CompilerUtilsIoTest {
     }
 
     @Test
-    public void writeBytesFailsWhenParentIsNotDirectory() throws Exception {
+    void writeBytesFailsWhenParentIsNotDirectory() throws Exception {
         Path tempDir = Files.createTempDirectory("compiler-utils-io-error");
         Path parentFile = tempDir.resolve("not-a-directory");
         Files.createFile(parentFile);
@@ -59,7 +59,7 @@ public class CompilerUtilsIoTest {
     }
 
     @Test
-    public void encodeDecodeUtf8Matches() throws Exception {
+    void encodeDecodeUtf8Matches() throws Exception {
         Method encode = CompilerUtils.class.getDeclaredMethod("encodeUTF8", String.class);
         Method decode = CompilerUtils.class.getDeclaredMethod("decodeUTF8", byte[].class);
         encode.setAccessible(true);
@@ -71,7 +71,7 @@ public class CompilerUtilsIoTest {
     }
 
     @Test
-    public void defineClassLoadsCompiledBytes() throws Exception {
+    void defineClassLoadsCompiledBytes() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "JDK compiler required for tests");
         try (StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null)) {
@@ -106,14 +106,14 @@ public class CompilerUtilsIoTest {
     }
 
     @Test
-    public void addClassPathHandlesMissingDirectory() {
+    void addClassPathHandlesMissingDirectory() {
         Path nonExisting = Paths.get("not-existing-" + System.nanoTime());
         boolean result = CompilerUtils.addClassPath(nonExisting.toString());
         assertTrue(!result, "Missing directories should return false");
     }
 
     @Test
-    public void addClassPathAddsExistingDirectory() throws Exception {
+    void addClassPathAddsExistingDirectory() throws Exception {
         Path tempDir = Files.createTempDirectory("compiler-utils-classpath");
         String originalClasspath = System.getProperty("java.class.path");
         try {
@@ -127,7 +127,7 @@ public class CompilerUtilsIoTest {
     }
 
     @Test
-    public void readTextInlineShortcutAndReadBytesMissing() throws Exception {
+    void readTextInlineShortcutAndReadBytesMissing() throws Exception {
         Method readText = CompilerUtils.class.getDeclaredMethod("readText", String.class);
         readText.setAccessible(true);
         String inline = (String) readText.invoke(null, "=inline");
@@ -145,7 +145,7 @@ public class CompilerUtilsIoTest {
     }
 
     @Test
-    public void closeSwallowsExceptions() throws Exception {
+    void closeSwallowsExceptions() throws Exception {
         Method closeMethod = CompilerUtils.class.getDeclaredMethod("close", Closeable.class);
         closeMethod.setAccessible(true);
         closeMethod.invoke(null, (Closeable) () -> {
@@ -154,14 +154,14 @@ public class CompilerUtilsIoTest {
     }
 
     @Test
-    public void closeIgnoresNullReference() throws Exception {
+    void closeIgnoresNullReference() throws Exception {
         Method closeMethod = CompilerUtils.class.getDeclaredMethod("close", Closeable.class);
         closeMethod.setAccessible(true);
         closeMethod.invoke(null, new Object[]{null});
     }
 
     @Test
-    public void getInputStreamSupportsInlineContent() throws Exception {
+    void getInputStreamSupportsInlineContent() throws Exception {
         Method method = CompilerUtils.class.getDeclaredMethod("getInputStream", String.class);
         method.setAccessible(true);
         try (InputStream is = (InputStream) method.invoke(null, "=inline-data")) {
@@ -177,7 +177,7 @@ public class CompilerUtilsIoTest {
     }
 
     @Test
-    public void getInputStreamRejectsEmptyFilename() throws Exception {
+    void getInputStreamRejectsEmptyFilename() throws Exception {
         Method method = CompilerUtils.class.getDeclaredMethod("getInputStream", String.class);
         method.setAccessible(true);
         InvocationTargetException ex = assertThrows(InvocationTargetException.class,
@@ -186,7 +186,7 @@ public class CompilerUtilsIoTest {
     }
 
     @Test
-    public void getInputStreamUsesSlashFallback() throws Exception {
+    void getInputStreamUsesSlashFallback() throws Exception {
         Method method = CompilerUtils.class.getDeclaredMethod("getInputStream", String.class);
         method.setAccessible(true);
         ClassLoader original = Thread.currentThread().getContextClassLoader();
@@ -208,13 +208,13 @@ public class CompilerUtilsIoTest {
     }
 
     @Test
-    public void sanitizePathPreventsTraversal() {
+    void sanitizePathPreventsTraversal() {
         assertThrows(IllegalArgumentException.class,
                 () -> CompilerUtils.sanitizePath(Paths.get("..", "escape")));
     }
 
     @Test
-    public void writeBytesCreatesMissingParentDirectories() throws Exception {
+    void writeBytesCreatesMissingParentDirectories() throws Exception {
         Path tempDir = Files.createTempDirectory("compiler-utils-parent");
         Path nested = tempDir.resolve("nested").resolve("file.bin");
         boolean changed = CompilerUtils.writeBytes(nested.toFile(), new byte[]{10, 20, 30});
@@ -223,7 +223,7 @@ public class CompilerUtilsIoTest {
     }
 
     @Test
-    public void readBytesRejectsDirectories() throws Exception {
+    void readBytesRejectsDirectories() throws Exception {
         Method readBytes = CompilerUtils.class.getDeclaredMethod("readBytes", File.class);
         readBytes.setAccessible(true);
         Path tempDir = Files.createTempDirectory("compiler-utils-dir");

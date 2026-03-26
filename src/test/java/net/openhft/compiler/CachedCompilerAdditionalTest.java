@@ -22,10 +22,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class CachedCompilerAdditionalTest {
+class CachedCompilerAdditionalTest {
 
     @Test
-    public void compileFromJavaReturnsBytecode() throws Exception {
+    void compileFromJavaReturnsBytecode() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "System compiler required");
 
@@ -43,7 +43,7 @@ public class CachedCompilerAdditionalTest {
     }
 
     @Test
-    public void compileFromJavaReturnsEmptyMapOnFailure() throws Exception {
+    void compileFromJavaReturnsEmptyMapOnFailure() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "System compiler required");
         try (StandardJavaFileManager standardManager = compiler.getStandardFileManager(null, null, null)) {
@@ -58,7 +58,7 @@ public class CachedCompilerAdditionalTest {
     }
 
     @Test
-    public void updateFileManagerForClassLoaderInvokesConsumer() throws Exception {
+    void updateFileManagerForClassLoaderInvokesConsumer() throws Exception {
         CachedCompiler compiler = new CachedCompiler(null, null);
         ClassLoader loader = new ClassLoader() {
         };
@@ -70,7 +70,7 @@ public class CachedCompilerAdditionalTest {
     }
 
     @Test
-    public void updateFileManagerNoOpWhenClassLoaderUnknown() {
+    void updateFileManagerNoOpWhenClassLoaderUnknown() {
         CachedCompiler compiler = new CachedCompiler(null, null);
         AtomicBoolean invoked = new AtomicBoolean(false);
         compiler.updateFileManagerForClassLoader(new ClassLoader() {
@@ -79,7 +79,7 @@ public class CachedCompilerAdditionalTest {
     }
 
     @Test
-    public void closeClosesAllManagedFileManagers() throws Exception {
+    void closeClosesAllManagedFileManagers() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "System compiler required");
         CachedCompiler cachedCompiler = new CachedCompiler(null, null);
@@ -94,7 +94,7 @@ public class CachedCompilerAdditionalTest {
     }
 
     @Test
-    public void createDefaultWriterFlushesOnClose() throws Exception {
+    void createDefaultWriterFlushesOnClose() throws Exception {
         Method factory = CachedCompiler.class.getDeclaredMethod("createDefaultWriter");
         factory.setAccessible(true);
         PrintWriter writer = (PrintWriter) factory.invoke(null);
@@ -103,7 +103,7 @@ public class CachedCompilerAdditionalTest {
     }
 
     @Test
-    public void validateClassNameAllowsDescriptorForms() throws Exception {
+    void validateClassNameAllowsDescriptorForms() throws Exception {
         Method validate = CachedCompiler.class.getDeclaredMethod("validateClassName", String.class);
         validate.setAccessible(true);
 
@@ -125,7 +125,7 @@ public class CachedCompilerAdditionalTest {
     }
 
     @Test
-    public void safeResolvePreventsPathTraversal() throws Exception {
+    void safeResolvePreventsPathTraversal() throws Exception {
         Method method = CachedCompiler.class.getDeclaredMethod("safeResolve", File.class, String.class);
         method.setAccessible(true);
         Path root = Files.createTempDirectory("cached-compiler-safe");
@@ -142,7 +142,7 @@ public class CachedCompilerAdditionalTest {
     }
 
     @Test
-    public void writesSourceAndClassFilesWhenDirectoriesProvided() throws Exception {
+    void writesSourceAndClassFilesWhenDirectoriesProvided() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "System compiler required");
 

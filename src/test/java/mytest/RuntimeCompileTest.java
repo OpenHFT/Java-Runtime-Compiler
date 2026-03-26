@@ -20,7 +20,7 @@ import java.util.function.IntSupplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class RuntimeCompileTest {
+class RuntimeCompileTest {
     private static String code = "package mytest;\n" +
             "public class Test implements IntConsumer {\n" +
             "    public void accept(int num) {\n" +
@@ -30,7 +30,7 @@ public class RuntimeCompileTest {
             "}\n";
 
     @Test
-    public void outOfBounds() throws Exception {
+    void outOfBounds() throws Exception {
         ClassLoader cl = new URLClassLoader(new URL[0]);
         Class<?> aClass = CompilerUtils.CACHED_COMPILER.
                 loadFromJava(cl, "mytest.Test", code);
@@ -44,7 +44,7 @@ public class RuntimeCompileTest {
     }
 
     @Test
-    public void testMultiThread() throws Exception {
+    void testMultiThread() throws Exception {
         StringBuilder largeClass = new StringBuilder("package mytest;\n" +
                 "public class Test2 implements IntConsumer, java.util.function.IntSupplier {\n" +
                 "    static final java.util.concurrent.atomic.AtomicInteger called = new java.util.concurrent.atomic.AtomicInteger(0);\n" +
@@ -52,8 +52,8 @@ public class RuntimeCompileTest {
                 "    public void accept(int num) {\n" +
                 "        called.incrementAndGet();\n" +
                 "    }\n");
-        for (int j=0; j<1_000; j++) {
-            largeClass.append("    public void accept"+j+"(int num) {\n" +
+        for (int j = 0; j < 1_000; j++) {
+            largeClass.append("    public void accept" + j + "(int num) {\n" +
                     "        if ((byte) num != num)\n" +
                     "            throw new IllegalArgumentException();\n" +
                     "    }\n");
@@ -68,7 +68,7 @@ public class RuntimeCompileTest {
         final AtomicInteger started = new AtomicInteger(0);
         final ExecutorService executor = Executors.newFixedThreadPool(nThreads);
         final List<Future<?>> futures = new ArrayList<>();
-        for (int i=0; i<nThreads; i++) {
+        for (int i = 0; i < nThreads; i++) {
             final int value = i;
             futures.add(executor.submit(() -> {
                 started.incrementAndGet();
