@@ -1,0 +1,254 @@
+= Release Notes
+Chronicle Software
+:toc:
+:sectnums:
+:lang: en-GB
+:source-highlighter: rouge
+
+This document summarises tagged Java-Runtime-Compiler releases from 2020-01-01 onwards, using the annotated Git tag dates and the commit history available on 2026-04-28.
+The legacy `compiler-*` tags are included because they are the release tags used for the Maven artefact `net.openhft:compiler`.
+Chronicle-wide release-note subscriptions remain available at https://chronicle.software/release-notes/.
+
+The emphasis is on user-visible behaviour, compatibility, dependency alignment, security hardening, documentation, and operational impact.
+Early-access releases are marked with `ea` in the version name.
+The type marker uses ASCII rather than emoji to stay within the repository character-set policy:
+
+* `[F] Functional` - API, runtime behaviour, compiler behaviour, Java compatibility, diagnostics, packaging metadata, or security posture changed.
+* `[N] Non-functional` - release alignment, dependency alignment, build, documentation, test, comment, or metadata changes only.
+
+== Upgrade highlights
+
+* The latest tagged release in this window is `compiler-2026.2`.
+It is primarily a Maven/BOM alignment release over `2026.1`.
+* There are unreleased branch updates after `compiler-2026.2`.
+The main `develop`/`ea` line contains the post-release snapshot reset plus documentation path fixes; separate feature and documentation branches contain JUnit 5 migration work and documentation clean-up.
+* Runtime compilation became safer and more predictable across the 2020-2022 releases.
+Notable fixes include synchronised in-memory compiler buffers, safer concurrent `CachedCompiler.loadFromJava` execution, Java 15 and Java 17 compatibility fixes, import/order race fixes, and customisable compiler options.
+* The main functional upgrade path after the `2.4.x` line is through the `2.21ea*`, `2.23ea0`, `2.25ea3`, `2.26.x`/`2.27ea*`, and `2026.x` releases.
+Those releases add newer-JDK support, custom compiler options, file-manager customisation hooks, module metadata, and validation hardening.
+* `CachedCompiler` gained two file-manager extension paths.
+The `fileManagerOverride` hook and public `MyJavaFileManager` constructor were introduced in `compiler-2.25ea3`, and `updateFileManagerForClassLoader(ClassLoader, Consumer<MyJavaFileManager>)` was added in `compiler-2.27ea1` and backported to `compiler-2.26.3`.
+* The `compiler-2026.0` validation hardening is security-impacting.
+Generated class names are now checked before compilation or loading, generated source/class paths are resolved under their configured roots, and invalid traversal-like names fail earlier.
+Applications that deliberately generate unusual binary names should verify them before upgrading.
+* JPMS and packaging metadata improved in the `2.26`/`2.27` line.
+`Automatic-Module-Name` was added for stable module naming, and the old distribution-management block was removed from the POM.
+* Several releases are release-train or BOM alignment releases only.
+They are still listed because they are published artefacts, but their impact is described as dependency or build alignment rather than runtime behaviour.
+
+== Unreleased updates since `compiler-2026.2`
+
+These entries are based on remote branches visible on 2026-04-28.
+They are not published release artefacts and may change before the next tag.
+
+[cols="1,3,5,5",options="header"]
+|===
+|Date |Ref |Main change |Benefit / impact
+
+|2026-04-18
+|`origin/develop`, `origin/ea` +
+`[N]`
+|Post-release Maven state reset after `compiler-2026.2`, plus fixes for broken `AGENTS.md` paths to project documentation.
+|Keeps the development line ready for the next snapshot cycle and repairs local documentation links. No user-facing runtime behaviour change.
+
+|2026-04-18
+|`origin/sausage/docs-*` +
+`[N]`
+|Documentation-only branch set covering broken URL replacement, HTTP-to-HTTPS upgrades, copyright-year clean-up, UK English spelling, package-info grammar, AGENTS grammar, and replacement of characters above U+00FF with ASCII equivalents.
+|Improves documentation accuracy and repository character-set compliance. No runtime or API impact.
+
+|2026-03-26
+|`origin/feature/junit5` +
+`[N]`
+|Migrates runtime compiler tests to JUnit 5, updates the test dependency setup, and fixes remaining Jupiter migration regressions.
+|Modernises the test suite with no identified library runtime behaviour change; the only main-source diff is whitespace cleanup.
+|===
+
+== Release summary
+
+[cols="1,2,5,5",options="header"]
+|===
+|Date |Release |Main change |Benefit / impact
+
+|2026-01-28
+|`compiler-2026.2` +
+`[N]`
+|Aligned Maven versions to Chronicle BOM `2026.2`; POM-only change from `2026.1`.
+|Use when aligning with the Chronicle `2026.2` dependency stack. No user-facing behaviour change is expected from `2026.1`.
+
+|2026-01-28
+|`compiler-2026.1` +
+`[N]`
+|Aligned Maven versions to Chronicle BOM `2026.1` after the `2026.0` release.
+|Provides release-train consistency for users consuming the Chronicle `2026.1` stack. The diff from `2026.0` is POM-only.
+
+|2026-01-28
+|`compiler-2026.0` +
+`[F]`
+|Moved to calendar versioning and aligned to the `2026.0` parent/BOM stack; added class-name validation, safe generated-file path resolution, a non-closing UTF-8 default diagnostics writer, decision-log documentation, refreshed licence headers, and additional compiler/file-manager tests.
+|Establishes the 2026 baseline. Upgrades get stronger validation around generated names and paths, better test coverage for runtime compilation, and current Chronicle release-train alignment.
+
+|2025-10-30
+|`compiler-2.27ea3` +
+`[N]`
+|Refreshed contributor guidance, licence text, README material, project requirements, Javadocs, and code comments; aligned the early-access BOM to `2.27ea82`.
+|Improves maintainability and documentation clarity for the `2.27` early-access line without an identified runtime behaviour change.
+
+|2025-07-24
+|`compiler-2.25.5` +
+`[N]`
+|Updated the `2.25` maintenance line parent/BOM versions and released against BOM `2.25.114`.
+|Use when remaining on the `2.25` stable line and needing dependency alignment only.
+
+|2025-07-23
+|`compiler-2.26.4` +
+`[N]`
+|Updated the `2.26` maintenance line parent/BOM versions and released against BOM `2.26.86`.
+|Use when remaining on the `2.26` stable line and needing dependency alignment only.
+
+|2025-07-09
+|`compiler-2.27ea2` +
+`[N]`
+|Updated parent/BOM versions and moved the third-party BOM away from references to a legacy staging repository URL.
+|Keeps early-access dependency resolution current and avoids reliance on obsolete repository metadata.
+
+|2025-03-12
+|`compiler-2.26.3` +
+`[F]`
+|Backported the ability to update the `MyJavaFileManager` associated with a specific `ClassLoader`, and aligned the `2.26` line to BOM `2.26.80`.
+|Allows callers and tests on the stable `2.26` line to tune an existing file manager without replacing the whole compiler instance.
+
+|2025-03-12
+|`compiler-2.27ea1` +
+`[F]`
+|Added `CachedCompiler.updateFileManagerForClassLoader(ClassLoader, Consumer<MyJavaFileManager>)` and aligned the `2.27` early-access line to BOM `2.27ea24`.
+|Enables targeted file-manager updates per class loader, which is useful for advanced loading, testing, and cache-management scenarios.
+
+|2024-11-15
+|`compiler-2.27ea0` +
+`[F]`
+|Started the `2.27` early-access line, carried forward `Automatic-Module-Name`, aligned parent and third-party BOM versions, and removed the distribution-management section.
+|Provides a `2.27` test train with stable JPMS module metadata and cleaner Maven publishing configuration.
+
+|2024-11-15
+|`compiler-2.26.2` +
+`[F]`
+|Promoted the `2.26` line to a stable release, added `Automatic-Module-Name`, and aligned to stable `2.26` release versions.
+|Gives module-path users a stable module name and provides the stable entry point for the `2.26` release train.
+
+|2024-05-29
+|`compiler-2.26ea0` +
+`[N]`
+|Started the `2.26` early-access line with parent/BOM updates, warning clean-up, raw-type clean-up, and release-train version alignment.
+|Useful for consumers validating the `2.26` train; no major runtime behaviour change over `2.25ea3` was identified.
+
+|2024-05-29
+|`compiler-2.25.4` +
+`[N]`
+|Promoted the `2.25` line from early-access versioning to stable `2.25` versioning and aligned to BOM `2.25ea63`.
+|Stable entry point for the `2.25` line. The release is primarily version and dependency alignment over `2.25ea3`.
+
+|2024-05-01
+|`compiler-2.25ea3` +
+`[F]`
+|Added a `CachedCompiler.fileManagerOverride` hook, made `MyJavaFileManager` public with a public constructor, and aligned to BOM `2.25ea54`.
+|Allows advanced users and tests to provide a custom file-manager implementation while preserving the normal compiler path for default users.
+
+|2024-02-15
+|`compiler-2.25ea2` +
+`[N]`
+|Updated parent/BOM versions for the `2.25` early-access line.
+|Dependency alignment release; no user-facing runtime behaviour change was identified.
+
+|2023-12-29
+|`compiler-2.25ea1` +
+`[N]`
+|Fixed the current early-access version state and aligned to BOM `2.25ea13`.
+|Keeps the `2.25` early-access line internally consistent for consumers following Chronicle snapshots and EA releases.
+
+|2023-11-24
+|`compiler-2.25.0` +
+`[N]`
+|Released the `2.25` stable version after the initial `2.25ea0` tag.
+|Provides a stable `2.25` artefact; the diff from `2.25ea0` is release-version metadata.
+
+|2023-11-24
+|`compiler-2.25ea0` +
+`[N]`
+|Started the `2.25` early-access line from the `2.24ea0` baseline.
+|Release-train transition only; no major functional change over `2.24ea0` was identified.
+
+|2023-10-25
+|`compiler-2.24ea0` +
+`[N]`
+|Aligned parent/BOM versions, removed an unused import, refreshed copyright headers, and kept the project in line with the Chronicle ALL dependency set.
+|Build and dependency alignment release for consumers following the `2.24` early-access train.
+
+|2022-07-14
+|`compiler-2.23ea0` +
+`[F]`
+|Added support for custom compiler options, moved to the standard Maven directory layout, removed the GitHub Actions workflow, and aligned Java 11/17 profile activation with the parent POM.
+|Callers can now pass explicit compiler flags to `CachedCompiler`, and the project structure/build behaviour is easier to consume with standard Maven tooling.
+
+|2022-04-08
+|`compiler-2.21ea82` +
+`[F]`
+|Fixed a `ConcurrentModificationException` seen when compiling many method readers under Java 17, and updated compiler/plugin dependencies.
+|Improves reliability for high-volume runtime compilation on Java 17.
+
+|2021-12-22
+|`compiler-2.21ea81` +
+`[F]`
+|Fixed Java 11+ test/runtime configuration issues, improved class import and class-loading order behaviour, added GitHub build metadata, and renamed the README to AsciiDoc.
+|Improves correctness when generated classes depend on each other and makes the project easier to build and document on newer JDKs.
+
+|2021-10-05
+|`compiler-2.21ea80` +
+`[F]`
+|Improved Java 17 support, added a Java 11 build profile, fixed a Java 17 `ConcurrentModificationException`, switched logging paths to `Jvm.{level}()` handlers, and aligned to the `x.21.80` Chronicle train.
+|Reduces failures on Java 11/17 and keeps diagnostics consistent with Chronicle Core logging conventions.
+
+|2021-03-16
+|`compiler-2.21ea1` +
+`[F]`
+|Improved Azul Zing and Java 15 support, and aligned to BOM `2.21ea80`.
+|Broadens runtime support for non-standard JVM layouts and newer JDKs.
+
+|2020-12-31
+|`compiler-2.21ea0` +
+`[N]`
+|Started the `2.21` early-access line and aligned to BOM `2.21ea3`.
+|Release-train transition from the `2.4` line; no major functional change over `2.4.1` was identified.
+
+|2020-12-17
+|`compiler-2.4.1` +
+`[F]`
+|Made concurrent `CachedCompiler.loadFromJava` execution safer by introducing a closeable byte-array output stream path, improving file-manager synchronisation, and aligning to BOM `2.20.209`.
+|Reduces races and compiler-buffer corruption when several threads compile or load generated classes at the same time.
+
+|2020-10-21
+|`compiler-2.4.0` +
+`[F]`
+|Added support for a generated method bridge used by Chronicle Wire MethodWriter/MethodReader mocking, added classpath handling for the Maven exec plugin, enabled Dependabot v2, and refreshed build dependencies.
+|Supports back-to-back generated method-call testing scenarios and improves build/dependency maintenance.
+
+|2020-06-19
+|`compiler-2.3.6` +
+`[N]`
+|Updated root POM, parent POM, third-party BOM, and Chronicle BOM versions for the `2.3` line.
+|Dependency alignment release for users staying on `2.3.x`; no user-facing runtime behaviour change was identified.
+
+|2020-01-31
+|`compiler-2.3.5` +
+`[F]`
+|Fixed in-memory file-manager buffer handling by using a synchronised map to avoid `ConcurrentModificationException`, simplified generics, and carried forward the previous Chronicle Queue-related file-manager fix.
+|Improves runtime compilation reliability under concurrent or repeated generated-class workloads.
+|===
+
+== Notes for maintainers
+
+The release history contains several release-train commits whose only effective change is Maven version alignment.
+Those releases are still listed because they are published artefacts, but their impact is intentionally described as dependency or build alignment rather than runtime behaviour.
+
+When preparing future release notes, prefer summarising user impact rather than copying raw commit subjects.
+The most useful recurring categories are Java compatibility, class-loading behaviour, compiler/file-manager extension points, security validation, dependency/BOM alignment, packaging metadata, diagnostics, and documentation.
