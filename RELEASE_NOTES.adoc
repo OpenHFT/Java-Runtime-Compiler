@@ -36,34 +36,6 @@ Applications that deliberately generate unusual binary names should verify them 
 * Several releases are release-train or BOM alignment releases only.
 They are still listed because they are published artefacts, but their impact is described as dependency or build alignment rather than runtime behaviour.
 
-== Unreleased updates since `compiler-2026.2`
-
-These entries are based on remote branches visible on 2026-04-28.
-They are not published release artefacts and may change before the next tag.
-
-[cols="1,3,5,5",options="header"]
-|===
-|Date |Ref |Main change |Benefit / impact
-
-|2026-04-18
-|`origin/develop`, `origin/ea` +
-`[N]`
-|Post-release Maven state reset after `compiler-2026.2`, plus fixes for broken `AGENTS.md` paths to project documentation.
-|Keeps the development line ready for the next snapshot cycle and repairs local documentation links. No user-facing runtime behaviour change.
-
-|2026-04-18
-|`origin/sausage/docs-*` +
-`[N]`
-|Documentation-only branch set covering broken URL replacement, HTTP-to-HTTPS upgrades, copyright-year clean-up, UK English spelling, package-info grammar, AGENTS grammar, and replacement of characters above U+00FF with ASCII equivalents.
-|Improves documentation accuracy and repository character-set compliance. No runtime or API impact.
-
-|2026-03-26
-|`origin/feature/junit5` +
-`[N]`
-|Migrates runtime compiler tests to JUnit 5, updates the test dependency setup, and fixes remaining Jupiter migration regressions.
-|Modernises the test suite with no identified library runtime behaviour change; the only main-source diff is whitespace cleanup.
-|===
-
 == Release summary
 
 [cols="1,2,5,5",options="header"]
