@@ -172,6 +172,13 @@ public class CachedCompiler implements Closeable {
                                         @NotNull String javaCode,
                                         final @NotNull PrintWriter writer,
                                         MyJavaFileManager fileManager) {
+        return compileFromJavaResult(className, javaCode, writer, fileManager).classes;
+    }
+
+    private CompilationResult compileFromJavaResult(@NotNull String className,
+                                                    @NotNull String javaCode,
+                                                    final @NotNull PrintWriter writer,
+                                                    MyJavaFileManager fileManager) {
         validateClassName(className);
         Iterable<? extends JavaFileObject> compilationUnits;
         if (sourceDir != null) {
@@ -186,12 +193,15 @@ public class CachedCompiler implements Closeable {
             javaFileObjects.put(className, new JavaSourceFromString(className, javaCode));
             compilationUnits = new ArrayList<>(javaFileObjects.values()); // To prevent CME from compiler code
         }
+        StringBuilder diagnostics = new StringBuilder();
         // reuse the same file manager to allow caching of jar files
         boolean ok = s_compiler.getTask(writer, fileManager, new DiagnosticListener<JavaFileObject>() {
             @Override
             public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
                 if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
-                    writer.println(diagnostic);
+                    String message = diagnostic.toString();
+                    writer.println(message);
+                    diagnostics.append(message).append(System.lineSeparator());
                 }
             }
         }, options, null, compilationUnits).call();
@@ -202,11 +212,11 @@ public class CachedCompiler implements Closeable {
                 javaFileObjects.remove(className);
 
             // nothing to return due to compiler error
-            return Collections.emptyMap();
+            return new CompilationResult(false, Collections.emptyMap(), diagnostics.toString());
         } else {
             Map<String, byte[]> result = fileManager.getAllBuffers();
 
-            return result;
+            return new CompilationResult(true, result, diagnostics.toString());
         }
     }
 
@@ -245,7 +255,16 @@ public class CachedCompiler implements Closeable {
             fileManager = getFileManager(standardJavaFileManager);
             fileManagerMap.put(classLoader, fileManager);
         }
-        final Map<String, byte[]> compiled = compileFromJava(className, javaCode, printWriter, fileManager);
+        final CompilationResult compilation = compileFromJavaResult(className, javaCode, printWriter, fileManager);
+        if (!compilation.success) {
+            throw compilationFailedException(className, compilation.diagnostics);
+        }
+
+        final Map<String, byte[]> compiled = compilation.classes;
+        if (!compiled.containsKey(className)) {
+            throw missingCompiledClassException(className, compiled.keySet(), compilation.diagnostics);
+        }
+
         for (Map.Entry<String, byte[]> entry : compiled.entrySet()) {
             String className2 = entry.getKey();
             validateClassName(className2);
@@ -275,7 +294,10 @@ public class CachedCompiler implements Closeable {
             }
         }
         synchronized (loadedClassesMap) {
-            loadedClasses.put(className, clazz = classLoader.loadClass(className));
+            clazz = loadedClasses.get(className);
+        }
+        if (clazz == null) {
+            throw missingCompiledClassException(className, compiled.keySet(), compilation.diagnostics);
         }
         return clazz;
     }
@@ -327,6 +349,27 @@ public class CachedCompiler implements Closeable {
         return candidate.toFile();
     }
 
+    private static ClassNotFoundException compilationFailedException(String className, String diagnostics) {
+        String diagnosticText = diagnostics.trim();
+        String message = "Compilation failed for " + className;
+        if (!diagnosticText.isEmpty()) {
+            message += System.lineSeparator() + diagnosticText;
+        }
+        return new ClassNotFoundException(message, new IllegalStateException(message));
+    }
+
+    private static ClassNotFoundException missingCompiledClassException(String className,
+                                                                       Set<String> compiledClassNames,
+                                                                       String diagnostics) {
+        String diagnosticText = diagnostics.trim();
+        String message = "Compilation did not produce requested class " + className
+                + ". Compiled classes: " + compiledClassNames;
+        if (!diagnosticText.isEmpty()) {
+            message += System.lineSeparator() + diagnosticText;
+        }
+        return new ClassNotFoundException(message, new IllegalStateException(message));
+    }
+
     private static PrintWriter createDefaultWriter() {
         OutputStreamWriter writer = new OutputStreamWriter(System.err, StandardCharsets.UTF_8);
         return new PrintWriter(writer, true) {
@@ -335,5 +378,17 @@ public class CachedCompiler implements Closeable {
                 flush(); // never close System.err
             }
         };
+    }
+
+    private static final class CompilationResult {
+        private final boolean success;
+        private final Map<String, byte[]> classes;
+        private final String diagnostics;
+
+        private CompilationResult(boolean success, Map<String, byte[]> classes, String diagnostics) {
+            this.success = success;
+            this.classes = classes;
+            this.diagnostics = diagnostics;
+        }
     }
 }
