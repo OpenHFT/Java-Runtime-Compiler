@@ -193,7 +193,7 @@ public class CachedCompiler implements Closeable {
             javaFileObjects.put(className, new JavaSourceFromString(className, javaCode));
             compilationUnits = new ArrayList<>(javaFileObjects.values()); // To prevent CME from compiler code
         }
-        StringBuilder diagnostics = new StringBuilder();
+        StringBuffer diagnostics = new StringBuffer();
         // reuse the same file manager to allow caching of jar files
         boolean ok = s_compiler.getTask(writer, fileManager, new DiagnosticListener<JavaFileObject>() {
             @Override
@@ -236,35 +236,49 @@ public class CachedCompiler implements Closeable {
                                  @NotNull String className,
                                  @NotNull String javaCode,
                                  @Nullable PrintWriter writer) throws ClassNotFoundException {
-        Class<?> clazz = null;
-        Map<String, Class<?>> loadedClasses;
-        synchronized (loadedClassesMap) {
-            loadedClasses = loadedClassesMap.get(classLoader);
-            if (loadedClasses == null)
-                loadedClassesMap.put(classLoader, loadedClasses = new LinkedHashMap<>());
-            else
-                clazz = loadedClasses.get(className);
-        }
+        Map<String, Class<?>> loadedClasses = getOrCreateLoadedClasses(classLoader);
+        Class<?> clazz = getLoadedClass(loadedClasses, className);
         PrintWriter printWriter = writer == null ? DEFAULT_WRITER : writer;
         if (clazz != null)
             return clazz;
 
+        MyJavaFileManager fileManager = getOrCreateFileManager(classLoader);
+        final Map<String, byte[]> compiled = compileFromJavaOrThrow(className, javaCode, printWriter, fileManager);
+
+        defineCompiledClasses(classLoader, loadedClasses, compiled);
+        return getLoadedClassOrThrow(loadedClasses, className, compiled.keySet());
+    }
+
+    private Map<String, Class<?>> getOrCreateLoadedClasses(@NotNull ClassLoader classLoader) {
+        synchronized (loadedClassesMap) {
+            Map<String, Class<?>> loadedClasses = loadedClassesMap.get(classLoader);
+            if (loadedClasses == null) {
+                loadedClasses = new LinkedHashMap<>();
+                loadedClassesMap.put(classLoader, loadedClasses);
+            }
+            return loadedClasses;
+        }
+    }
+
+    private Class<?> getLoadedClass(Map<String, Class<?>> loadedClasses, String className) {
+        synchronized (loadedClassesMap) {
+            return loadedClasses.get(className);
+        }
+    }
+
+    private MyJavaFileManager getOrCreateFileManager(@NotNull ClassLoader classLoader) {
         MyJavaFileManager fileManager = fileManagerMap.get(classLoader);
         if (fileManager == null) {
             StandardJavaFileManager standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
             fileManager = getFileManager(standardJavaFileManager);
             fileManagerMap.put(classLoader, fileManager);
         }
-        final CompilationResult compilation = compileFromJavaResult(className, javaCode, printWriter, fileManager);
-        if (!compilation.success) {
-            throw compilationFailedException(className, compilation.diagnostics);
-        }
+        return fileManager;
+    }
 
-        final Map<String, byte[]> compiled = compilation.classes;
-        if (!compiled.containsKey(className)) {
-            throw missingCompiledClassException(className, compiled.keySet(), compilation.diagnostics);
-        }
-
+    private void defineCompiledClasses(@NotNull ClassLoader classLoader,
+                                       Map<String, Class<?>> loadedClasses,
+                                       Map<String, byte[]> compiled) {
         for (Map.Entry<String, byte[]> entry : compiled.entrySet()) {
             String className2 = entry.getKey();
             validateClassName(className2);
@@ -273,13 +287,7 @@ public class CachedCompiler implements Closeable {
                     continue;
             }
             byte[] bytes = entry.getValue();
-            if (classDir != null) {
-                String filename = className2.replaceAll("\\.", '\\' + File.separator) + ".class";
-                boolean changed = writeBytes(safeResolve(classDir, filename), bytes);
-                if (changed) {
-                    LOG.info("Updated {} in {}", className2, classDir);
-                }
-            }
+            writeClassFileIfConfigured(className2, bytes);
 
             synchronized (className2.intern()) { // To prevent duplicate class definition error
                 synchronized (loadedClassesMap) {
@@ -293,13 +301,43 @@ public class CachedCompiler implements Closeable {
                 }
             }
         }
-        synchronized (loadedClassesMap) {
-            clazz = loadedClasses.get(className);
+    }
+
+    private void writeClassFileIfConfigured(String className, byte[] bytes) {
+        if (classDir != null) {
+            String filename = className.replaceAll("\\.", '\\' + File.separator) + ".class";
+            boolean changed = writeBytes(safeResolve(classDir, filename), bytes);
+            if (changed) {
+                LOG.info("Updated {} in {}", className, classDir);
+            }
         }
+    }
+
+    private Class<?> getLoadedClassOrThrow(Map<String, Class<?>> loadedClasses,
+                                           String className,
+                                           Set<String> compiledClassNames) throws ClassNotFoundException {
+        Class<?> clazz = getLoadedClass(loadedClasses, className);
         if (clazz == null) {
-            throw missingCompiledClassException(className, compiled.keySet(), compilation.diagnostics);
+            throw new ClassNotFoundException("Compiled class " + className
+                    + " was not defined. Compiled classes: " + compiledClassNames);
         }
         return clazz;
+    }
+
+    private Map<String, byte[]> compileFromJavaOrThrow(@NotNull String className,
+                                                       @NotNull String javaCode,
+                                                       @NotNull PrintWriter printWriter,
+                                                       @NotNull MyJavaFileManager fileManager) throws ClassNotFoundException {
+        CompilationResult compilation = compileFromJavaResult(className, javaCode, printWriter, fileManager);
+        if (!compilation.success) {
+            throw compilationFailedException(className, compilation.diagnostics);
+        }
+
+        Map<String, byte[]> compiled = compilation.classes;
+        if (!compiled.containsKey(className)) {
+            throw missingCompiledClassException(className, compiled.keySet(), compilation.diagnostics);
+        }
+        return compiled;
     }
 
     /**
