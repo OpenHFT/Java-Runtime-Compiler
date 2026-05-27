@@ -237,7 +237,7 @@ public class CachedCompiler implements Closeable {
                                  @NotNull String javaCode,
                                  @Nullable PrintWriter writer) throws ClassNotFoundException {
         Map<String, Class<?>> loadedClasses = getOrCreateLoadedClasses(classLoader);
-        Class<?> clazz = getLoadedClass(loadedClasses, className);
+        Class<?> clazz = getCachedLoadedClass(loadedClasses, className);
         PrintWriter printWriter = writer == null ? DEFAULT_WRITER : writer;
         if (clazz != null)
             return clazz;
@@ -260,7 +260,7 @@ public class CachedCompiler implements Closeable {
         }
     }
 
-    private Class<?> getLoadedClass(Map<String, Class<?>> loadedClasses, String className) {
+    private Class<?> getCachedLoadedClass(Map<String, Class<?>> loadedClasses, String className) {
         synchronized (loadedClassesMap) {
             return loadedClasses.get(className);
         }
@@ -316,7 +316,7 @@ public class CachedCompiler implements Closeable {
     private Class<?> getLoadedClassOrThrow(Map<String, Class<?>> loadedClasses,
                                            String className,
                                            Set<String> compiledClassNames) throws ClassNotFoundException {
-        Class<?> clazz = getLoadedClass(loadedClasses, className);
+        Class<?> clazz = getCachedLoadedClass(loadedClasses, className);
         if (clazz == null) {
             throw new ClassNotFoundException("Compiled class " + className
                     + " was not defined. Compiled classes: " + compiledClassNames);

@@ -14,7 +14,7 @@ import java.util.Map;
 
 import static org.junit.Assert.*;
 
-public class CachedCompilerModuleClassLoaderReproTest {
+public class CachedCompilerModuleClassLoaderDiagnosticsTest {
 
     @Test
     public void moduleLikeLoaderCanLoadClassAfterSuccessfulDefineClass() throws Exception {
@@ -102,7 +102,7 @@ public class CachedCompilerModuleClassLoaderReproTest {
         private static final String APP_PREFIX = "app.";
 
         ModuleLikeClassLoader() {
-            super(CachedCompilerModuleClassLoaderReproTest.class.getClassLoader());
+            super(CachedCompilerModuleClassLoaderDiagnosticsTest.class.getClassLoader());
         }
 
         @Override
