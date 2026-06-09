@@ -256,9 +256,7 @@ public class CachedCompiler implements Closeable {
         }
         StringBuilder diagnostics = new StringBuilder();
         final Map<String, byte[]> compiled = compileFromJava(className, javaCode, printWriter, fileManager, diagnostics);
-        if (!compiled.containsKey(className)) {
-            throw missingCompiledClassException(className, compiled.keySet(), diagnostics.toString());
-        }
+        throwIfMissingCompiledClass(className, compiled, diagnostics);
         for (Map.Entry<String, byte[]> entry : compiled.entrySet()) {
             String className2 = entry.getKey();
             validateClassName(className2);
@@ -338,6 +336,14 @@ public class CachedCompiler implements Closeable {
             throw new IllegalArgumentException("Attempted path traversal for " + relativePath);
         }
         return candidate.toFile();
+    }
+
+    private static void throwIfMissingCompiledClass(String className,
+                                                    Map<String, byte[]> compiled,
+                                                    StringBuilder diagnostics) throws ClassNotFoundException {
+        if (!compiled.containsKey(className)) {
+            throw missingCompiledClassException(className, compiled.keySet(), diagnostics.toString());
+        }
     }
 
     private static ClassNotFoundException missingCompiledClassException(String className,
