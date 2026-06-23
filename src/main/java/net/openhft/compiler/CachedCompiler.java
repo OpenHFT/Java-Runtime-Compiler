@@ -189,7 +189,7 @@ public class CachedCompiler implements Closeable {
                                         final @NotNull PrintWriter writer,
                                         MyJavaFileManager fileManager,
                                         @Nullable StringBuilder diagnostics,
-                                        @NotNull Diagnostic.Kind diagnosticToCapture) {
+                                        @Nullable Diagnostic.Kind diagnosticToCapture) {
         validateClassName(className);
         Iterable<? extends JavaFileObject> compilationUnits;
         if (sourceDir != null) {
@@ -204,9 +204,10 @@ public class CachedCompiler implements Closeable {
             javaFileObjects.put(className, new JavaSourceFromString(className, javaCode));
             compilationUnits = new ArrayList<>(javaFileObjects.values()); // To prevent CME from compiler code
         }
+        Diagnostic.Kind threshold = diagnosticToCapture == null ? Diagnostic.Kind.ERROR : diagnosticToCapture;
         // reuse the same file manager to allow caching of jar files
         boolean ok = s_compiler.getTask(writer, fileManager, diagnostic -> {
-            if (shouldCaptureDiagnostic(diagnostic.getKind(), diagnosticToCapture)) {
+            if (diagnostic.getKind().ordinal() <= threshold.ordinal()) {
                 String message = diagnostic.toString();
                 writer.println(message);
                 if (diagnostics != null) {
@@ -226,25 +227,6 @@ public class CachedCompiler implements Closeable {
             Map<String, byte[]> result = fileManager.getAllBuffers();
 
             return result;
-        }
-    }
-
-    private static boolean shouldCaptureDiagnostic(Diagnostic.Kind actual, Diagnostic.Kind threshold) {
-        return diagnosticSeverity(actual) <= diagnosticSeverity(threshold);
-    }
-
-    private static int diagnosticSeverity(Diagnostic.Kind kind) {
-        switch (kind) {
-            case ERROR:
-                return 0;
-            case WARNING:
-            case MANDATORY_WARNING:
-                return 1;
-            case NOTE:
-                return 2;
-            case OTHER:
-            default:
-                return 3;
         }
     }
 

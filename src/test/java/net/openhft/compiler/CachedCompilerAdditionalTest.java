@@ -79,16 +79,16 @@ public class CachedCompilerAdditionalTest {
                     Diagnostic.Kind.ERROR);
 
             cachedCompiler.compileFromJava(
-                    "coverage.WarningSampleWarningThreshold",
-                    "package coverage; import java.util.*; public class WarningSampleWarningThreshold { public List<String> value() { List raw = new ArrayList(); return raw; } }",
+                    "coverage.WarningSampleMandatoryWarningThreshold",
+                    "package coverage; import java.util.*; public class WarningSampleMandatoryWarningThreshold { public List<String> value() { List raw = new ArrayList(); return raw; } }",
                     quietWriter,
                     fileManager,
                     warningDiagnostics,
-                    Diagnostic.Kind.WARNING);
+                    Diagnostic.Kind.MANDATORY_WARNING);
 
             assertEquals("Warning diagnostics should not be captured at ERROR threshold",
                     "", errorDiagnostics.toString());
-            assertTrue("Warning diagnostics should be captured at WARNING threshold: " + warningDiagnostics,
+            assertTrue("Warning diagnostics should be captured at MANDATORY_WARNING threshold: " + warningDiagnostics,
                     warningDiagnostics.toString().contains("unchecked"));
         }
     }
