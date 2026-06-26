@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.tools.Diagnostic;
+import javax.tools.DiagnosticListener;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import java.io.*;
@@ -171,25 +172,6 @@ public class CachedCompiler implements Closeable {
                                         @NotNull String javaCode,
                                         final @NotNull PrintWriter writer,
                                         MyJavaFileManager fileManager) {
-        return compileFromJava(className, javaCode, writer, fileManager, null);
-    }
-
-    @NotNull
-    Map<String, byte[]> compileFromJava(@NotNull String className,
-                                        @NotNull String javaCode,
-                                        final @NotNull PrintWriter writer,
-                                        MyJavaFileManager fileManager,
-                                        @Nullable StringBuilder diagnostics) {
-        return compileFromJava(className, javaCode, writer, fileManager, diagnostics, Diagnostic.Kind.ERROR);
-    }
-
-    @NotNull
-    Map<String, byte[]> compileFromJava(@NotNull String className,
-                                        @NotNull String javaCode,
-                                        final @NotNull PrintWriter writer,
-                                        MyJavaFileManager fileManager,
-                                        @Nullable StringBuilder diagnostics,
-                                        @Nullable Diagnostic.Kind diagnosticToCapture) {
         validateClassName(className);
         Iterable<? extends JavaFileObject> compilationUnits;
         if (sourceDir != null) {
@@ -204,14 +186,12 @@ public class CachedCompiler implements Closeable {
             javaFileObjects.put(className, new JavaSourceFromString(className, javaCode));
             compilationUnits = new ArrayList<>(javaFileObjects.values()); // To prevent CME from compiler code
         }
-        Diagnostic.Kind threshold = diagnosticToCapture == null ? Diagnostic.Kind.ERROR : diagnosticToCapture;
         // reuse the same file manager to allow caching of jar files
-        boolean ok = s_compiler.getTask(writer, fileManager, diagnostic -> {
-            if (diagnostic.getKind().ordinal() <= threshold.ordinal()) {
-                String message = diagnostic.toString();
-                writer.println(message);
-                if (diagnostics != null) {
-                    diagnostics.append(message).append(System.lineSeparator());
+        boolean ok = s_compiler.getTask(writer, fileManager, new DiagnosticListener<JavaFileObject>() {
+            @Override
+            public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
+                if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
+                    writer.println(diagnostic);
                 }
             }
         }, options, null, compilationUnits).call();
@@ -265,9 +245,7 @@ public class CachedCompiler implements Closeable {
             fileManager = getFileManager(standardJavaFileManager);
             fileManagerMap.put(classLoader, fileManager);
         }
-        StringBuilder diagnostics = new StringBuilder();
-        final Map<String, byte[]> compiled = compileFromJava(className, javaCode, printWriter, fileManager, diagnostics);
-        throwIfMissingCompiledClass(className, compiled, diagnostics);
+        final Map<String, byte[]> compiled = compileFromJava(className, javaCode, printWriter, fileManager);
         for (Map.Entry<String, byte[]> entry : compiled.entrySet()) {
             String className2 = entry.getKey();
             validateClassName(className2);
@@ -347,29 +325,6 @@ public class CachedCompiler implements Closeable {
             throw new IllegalArgumentException("Attempted path traversal for " + relativePath);
         }
         return candidate.toFile();
-    }
-
-    private static void throwIfMissingCompiledClass(String className,
-                                                    Map<String, byte[]> compiled,
-                                                    StringBuilder diagnostics) throws ClassNotFoundException {
-        if (!compiled.containsKey(className)) {
-            throw missingCompiledClassException(className, compiled.keySet(), diagnostics.toString());
-        }
-    }
-
-    private static ClassNotFoundException missingCompiledClassException(String className,
-                                                                       Set<String> compiledClassNames,
-                                                                       String diagnostics) {
-        String diagnosticText = diagnostics.trim();
-        String message;
-        if (!diagnosticText.isEmpty()) {
-            message = "Compilation failed for " + className
-                    + System.lineSeparator() + diagnosticText;
-        } else {
-            message = "Compilation did not produce requested class " + className
-                    + ". Compiled classes: " + compiledClassNames;
-        }
-        return new ClassNotFoundException(message, new IllegalStateException(message));
     }
 
     private static PrintWriter createDefaultWriter() {
