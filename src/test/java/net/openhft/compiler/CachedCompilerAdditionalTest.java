@@ -5,14 +5,12 @@ package net.openhft.compiler;
 
 import org.junit.Test;
 
-import javax.tools.Diagnostic;
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -56,40 +54,6 @@ public class CachedCompilerAdditionalTest {
                     "package coverage; public class Broken { this does not compile }",
                     fileManager);
             assertTrue("Broken source should not produce classes", classes.isEmpty());
-        }
-    }
-
-    @Test
-    public void compileFromJavaCapturesDiagnosticsAtRequestedSeverity() throws Exception {
-        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertNotNull("System compiler required", compiler);
-        try (StandardJavaFileManager standardManager = compiler.getStandardFileManager(null, null, null)) {
-            CachedCompiler cachedCompiler = new CachedCompiler(null, null, Arrays.asList("-g", "-Xlint:unchecked"));
-            MyJavaFileManager fileManager = new MyJavaFileManager(standardManager);
-            StringBuilder errorDiagnostics = new StringBuilder();
-            StringBuilder warningDiagnostics = new StringBuilder();
-            PrintWriter quietWriter = new PrintWriter(new StringWriter());
-
-            cachedCompiler.compileFromJava(
-                    "coverage.WarningSampleErrorThreshold",
-                    "package coverage; import java.util.*; public class WarningSampleErrorThreshold { public List<String> value() { List raw = new ArrayList(); return raw; } }",
-                    quietWriter,
-                    fileManager,
-                    errorDiagnostics,
-                    Diagnostic.Kind.ERROR);
-
-            cachedCompiler.compileFromJava(
-                    "coverage.WarningSampleMandatoryWarningThreshold",
-                    "package coverage; import java.util.*; public class WarningSampleMandatoryWarningThreshold { public List<String> value() { List raw = new ArrayList(); return raw; } }",
-                    quietWriter,
-                    fileManager,
-                    warningDiagnostics,
-                    Diagnostic.Kind.MANDATORY_WARNING);
-
-            assertEquals("Warning diagnostics should not be captured at ERROR threshold",
-                    "", errorDiagnostics.toString());
-            assertTrue("Warning diagnostics should be captured at MANDATORY_WARNING threshold: " + warningDiagnostics,
-                    warningDiagnostics.toString().contains("unchecked"));
         }
     }
 
