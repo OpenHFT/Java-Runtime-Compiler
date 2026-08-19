@@ -13,6 +13,7 @@ import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 import java.io.*;
+import java.lang.invoke.MethodHandles;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
@@ -41,6 +42,11 @@ public enum CompilerUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CompilerUtils.class);
     private static final Method DEFINE_CLASS_METHOD;
+    // Anchor/lookup class-definition strategy (issue #91). Resolved reflectively so the Java 8
+    // source root still compiles and runs: MethodHandles.Lookup#defineClass(byte[]) only exists
+    // on Java 9+. When null (Java 8) the anchor mode is unavailable and callers fall back to the
+    // Unsafe/ClassLoader path.
+    private static final Method LOOKUP_DEFINE_CLASS = resolveLookupDefineClass();
     private static final Charset UTF_8 = Charset.forName("UTF-8");
     private static final String JAVA_CLASS_PATH = "java.class.path";
     static JavaCompiler s_compiler;
@@ -197,6 +203,67 @@ public enum CompilerUtils {
         } catch (InvocationTargetException e) {
             //noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException
             throw new AssertionError(e.getCause());
+        }
+    }
+
+    /**
+     * Whether the anchor/lookup class-definition strategy (issue #91) is available on the
+     * running JVM. {@code true} on Java&nbsp;9+, {@code false} on Java&nbsp;8, where
+     * {@link java.lang.invoke.MethodHandles.Lookup#defineClass(byte[])} does not exist.
+     *
+     * @return {@code true} if {@link #defineClass(MethodHandles.Lookup, byte[])} can be used.
+     */
+    public static boolean isAnchorDefineClassSupported() {
+        return LOOKUP_DEFINE_CLASS != null;
+    }
+
+    /**
+     * Defines a class using the <em>anchor/lookup</em> strategy (issue #91): the class in
+     * {@code bytes} is defined in the package and {@link ClassLoader} of the supplied
+     * {@code anchor} {@link MethodHandles.Lookup} via the public
+     * {@link java.lang.invoke.MethodHandles.Lookup#defineClass(byte[])} (Java&nbsp;9+).
+     * <p>
+     * Unlike {@link #defineClass(ClassLoader, String, byte[])} this uses <strong>no</strong>
+     * {@code sun.misc.Unsafe} and no {@code setAccessible}: the caller vouches for the target by
+     * handing over a full-privilege {@code Lookup} obtained in the destination package. The JDK
+     * enforces that the class in {@code bytes} is in the <em>same run-time package</em> as
+     * {@code anchor.lookupClass()} and that the anchor has {@code PACKAGE} access; a violation
+     * surfaces as {@link IllegalArgumentException}/{@link IllegalAccessException} from the JDK,
+     * not as a corrupted definition. This is the recommended path when the caller controls the
+     * destination package; use the compiler-owned child loader for arbitrary package names.
+     *
+     * @param anchor a {@code Lookup} with full privileges in the destination package.
+     * @param bytes  compiled bytecode whose class is in the anchor's package.
+     * @return the defined class.
+     * @throws UnsupportedOperationException on Java&nbsp;8, where the API does not exist.
+     */
+    public static Class<?> defineClass(@NotNull MethodHandles.Lookup anchor, @NotNull byte[] bytes) {
+        Objects.requireNonNull(anchor, "anchor Lookup");
+        Objects.requireNonNull(bytes, "bytes");
+        final Method define = LOOKUP_DEFINE_CLASS;
+        if (define == null)
+            throw new UnsupportedOperationException(
+                    "anchor/lookup class definition requires Java 9+ (MethodHandles.Lookup#defineClass)");
+        try {
+            return (Class<?>) define.invoke(anchor, (Object) bytes);
+        } catch (IllegalAccessException e) {
+            throw new AssertionError(e);
+        } catch (InvocationTargetException e) {
+            final Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException)
+                throw (RuntimeException) cause;
+            if (cause instanceof Error)
+                throw (Error) cause;
+            //noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException
+            throw new AssertionError(cause);
+        }
+    }
+
+    private static Method resolveLookupDefineClass() {
+        try {
+            return MethodHandles.Lookup.class.getMethod("defineClass", byte[].class);
+        } catch (NoSuchMethodException e) {
+            return null; // Java 8: anchor mode unavailable; the Unsafe path remains.
         }
     }
 

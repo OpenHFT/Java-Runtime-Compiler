@@ -13,6 +13,7 @@ import javax.tools.DiagnosticListener;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import java.io.*;
+import java.lang.invoke.MethodHandles;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.*;
@@ -137,6 +138,54 @@ public class CachedCompiler implements Closeable {
                                  @NotNull String javaCode) throws ClassNotFoundException {
         validateClassName(className);
         return loadFromJava(classLoader, className, javaCode, DEFAULT_WRITER);
+    }
+
+    /**
+     * Compile the source and define it using the <em>anchor/lookup</em> strategy (issue #91):
+     * the compiled classes are defined in the package and {@link ClassLoader} of the supplied
+     * {@code anchor} via {@link CompilerUtils#defineClass(MethodHandles.Lookup, byte[])}, using
+     * no {@code sun.misc.Unsafe}. The primary class must be declared in the same package as
+     * {@code anchor.lookupClass()}; the JDK rejects a cross-package definition.
+     * <p>
+     * This is the opt-in counterpart to {@link #loadFromJava(ClassLoader, String, String)}: use
+     * it when the caller controls the destination package and can hand over a full-privilege
+     * {@code Lookup}; use the class-loader overload for arbitrary package names via a
+     * compiler-owned loader.
+     *
+     * @param anchor    a {@code Lookup} with full privileges in the destination package.
+     * @param className expected binary name of the primary class (in the anchor's package).
+     * @param javaCode  source code to compile.
+     * @return the loaded class, defined in the anchor's loader.
+     * @throws ClassNotFoundException        if the compiled class cannot be found after definition.
+     * @throws UnsupportedOperationException on Java&nbsp;8, where anchor mode is unavailable.
+     */
+    public Class<?> loadFromJava(@NotNull MethodHandles.Lookup anchor,
+                                 @NotNull String className,
+                                 @NotNull String javaCode) throws ClassNotFoundException {
+        validateClassName(className);
+        if (!CompilerUtils.isAnchorDefineClassSupported())
+            throw new UnsupportedOperationException(
+                    "anchor/lookup class definition requires Java 9+ (MethodHandles.Lookup#defineClass)");
+        final ClassLoader classLoader = anchor.lookupClass().getClassLoader();
+        MyJavaFileManager fileManager = fileManagerMap.get(classLoader);
+        if (fileManager == null) {
+            StandardJavaFileManager standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
+            fileManager = getFileManager(standardJavaFileManager);
+            fileManagerMap.put(classLoader, fileManager);
+        }
+        final Map<String, byte[]> compiled = compileFromJava(className, javaCode, DEFAULT_WRITER, fileManager);
+        // Define the primary class first so nested classes resolve against an already-linked
+        // outer; the JDK links lazily so ordering within a package is otherwise unconstrained.
+        final byte[] primary = compiled.get(className);
+        if (primary != null)
+            CompilerUtils.defineClass(anchor, primary);
+        for (Map.Entry<String, byte[]> entry : compiled.entrySet()) {
+            if (entry.getKey().equals(className))
+                continue;
+            validateClassName(entry.getKey());
+            CompilerUtils.defineClass(anchor, entry.getValue());
+        }
+        return Class.forName(className, true, classLoader);
     }
 
     /**
