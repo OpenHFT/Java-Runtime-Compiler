@@ -155,20 +155,43 @@ public class MyJavaFileManagerTest {
     }
 
     @Test
-    public void invokeNamedMethodHandlesMissingMethods() throws Exception {
+    public void compilesAndLoadsClassWithoutEncapsulationFlags() throws Exception {
+        // Issue #91: runtime compilation must succeed on strongly-encapsulated JDKs
+        // (JEP 403, JDK 17/21/25) without requiring
+        // --add-opens jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED. This test runs
+        // with no such flags configured; the module-location reflection in
+        // MyJavaFileManager must therefore not fail the compilation.
+        try (CachedCompiler cc = new CachedCompiler(null, null)) {
+            Class<?> clazz = cc.loadFromJava("eg.Issue91",
+                    "package eg;\n" +
+                            "public class Issue91 implements java.util.concurrent.Callable<String> {\n" +
+                            "    public String call() {\n" +
+                            "        return \"ok-\" + System.getProperty(\"java.specification.version\");\n" +
+                            "    }\n" +
+                            "}\n");
+            Object instance = clazz.getDeclaredConstructor().newInstance();
+            @SuppressWarnings("unchecked")
+            java.util.concurrent.Callable<String> callable = (java.util.concurrent.Callable<String>) instance;
+            assertTrue(callable.call().startsWith("ok-"));
+        }
+    }
+
+    @Test
+    public void invokeNamedMethodReturnsDefaultWhenMethodMissing() throws Exception {
+        // Behaviour updated for issue #91: when the delegate does not expose the
+        // named method (e.g. a Java 8 StandardJavaFileManager), the helper now
+        // returns the caller-supplied neutral default rather than throwing, so
+        // compilation degrades gracefully instead of failing.
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull("System compiler required", compiler);
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
             MyJavaFileManager manager = new MyJavaFileManager(delegate);
             java.lang.reflect.Method method = MyJavaFileManager.class.getDeclaredMethod(
-                    "invokeNamedMethodIfAvailable", javax.tools.JavaFileManager.Location.class, String.class);
+                    "invokeNamedMethodIfAvailable", javax.tools.JavaFileManager.Location.class, String.class, Object.class);
             method.setAccessible(true);
-            try {
-                method.invoke(manager, StandardLocation.CLASS_PATH, "nonExistingMethod");
-                fail("Expected UnsupportedOperationException when method is absent");
-            } catch (java.lang.reflect.InvocationTargetException expected) {
-                assertTrue(expected.getCause() instanceof UnsupportedOperationException);
-            }
+            Object sentinel = new Object();
+            Object result = method.invoke(manager, StandardLocation.CLASS_PATH, "nonExistingMethod", sentinel);
+            assertSame(sentinel, result);
         }
     }
 
@@ -192,10 +215,10 @@ public class MyJavaFileManagerTest {
                     });
             MyJavaFileManager manager = new MyJavaFileManager(proxy);
             java.lang.reflect.Method method = MyJavaFileManager.class.getDeclaredMethod(
-                    "invokeNamedMethodIfAvailable", javax.tools.JavaFileManager.Location.class, String.class);
+                    "invokeNamedMethodIfAvailable", javax.tools.JavaFileManager.Location.class, String.class, Object.class);
             method.setAccessible(true);
             try {
-                method.invoke(manager, StandardLocation.CLASS_PATH, "listLocationsForModules");
+                method.invoke(manager, StandardLocation.CLASS_PATH, "listLocationsForModules", null);
                 fail("Expected invocation failure to be wrapped");
             } catch (InvocationTargetException expected) {
                 Throwable cause = expected.getCause();

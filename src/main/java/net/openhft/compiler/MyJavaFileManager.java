@@ -77,7 +77,7 @@ public class MyJavaFileManager implements JavaFileManager {
      * @return the module locations or an empty iterable
      */
     public synchronized Iterable<Set<Location>> listLocationsForModules(final Location location) {
-        return invokeNamedMethodIfAvailable(location, "listLocationsForModules");
+        return invokeNamedMethodIfAvailable(location, "listLocationsForModules", Collections.<Set<Location>>emptyList());
     }
 
     /**
@@ -88,7 +88,7 @@ public class MyJavaFileManager implements JavaFileManager {
      * @return the inferred module name or {@code null}
      */
     public synchronized String inferModuleName(final Location location) {
-        return invokeNamedMethodIfAvailable(location, "inferModuleName");
+        return invokeNamedMethodIfAvailable(location, "inferModuleName", (String) null);
     }
 
     public ClassLoader getClassLoader(Location location) {
@@ -233,7 +233,7 @@ public class MyJavaFileManager implements JavaFileManager {
      * to bypass accessibility checks when required.
      */
     @SuppressWarnings("unchecked")
-    private <T> T invokeNamedMethodIfAvailable(final Location location, final String name) {
+    private <T> T invokeNamedMethodIfAvailable(final Location location, final String name, final T defaultValue) {
         final Method[] methods = fileManager.getClass().getDeclaredMethods();
         for (Method method : methods) {
             if (method.getName().equals(name) && method.getParameterTypes().length == 1 &&
@@ -246,9 +246,20 @@ public class MyJavaFileManager implements JavaFileManager {
                     return (T) method.invoke(fileManager, location);
                 } catch (IllegalAccessException | InvocationTargetException e) {
                     throw new UnsupportedOperationException("Unable to invoke method " + name, e);
+                } catch (RuntimeException e) {
+                    // On strongly-encapsulated JDKs (JEP 403, JDK 17+) making the internal
+                    // delegate method accessible can throw InaccessibleObjectException when the
+                    // Unsafe override path is unavailable (e.g. a future JDK that removes it).
+                    // Degrade gracefully instead of failing the whole compilation: single-class
+                    // compilation against the application class path does not need module-location
+                    // resolution, so returning the neutral default keeps the library working
+                    // without requiring --add-opens jdk.compiler/... flags. See issue #91.
+                    LOG.debug("Falling back to default for {} (delegate {} not accessible): {}",
+                            name, fileManager.getClass().getName(), e.toString());
+                    return defaultValue;
                 }
             }
         }
-        throw new UnsupportedOperationException("Unable to find method " + name);
+        return defaultValue;
     }
 }
