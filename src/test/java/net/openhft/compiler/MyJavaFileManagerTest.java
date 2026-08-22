@@ -28,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
+import static org.junit.Assume.assumeTrue;
 
 public class MyJavaFileManagerTest {
 
@@ -197,6 +198,7 @@ public class MyJavaFileManagerTest {
 
     @Test
     public void invokeNamedMethodWrapsInvocationFailures() throws Exception {
+        assumeTrue("module methods need Java 9+", hasJavaFileManagerMethod("listLocationsForModules"));
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull("System compiler required", compiler);
         try (StandardJavaFileManager base = compiler.getStandardFileManager(null, null, null)) {
@@ -205,7 +207,7 @@ public class MyJavaFileManagerTest {
                     new Class[]{StandardJavaFileManager.class},
                     (proxyInstance, method, args) -> {
                         if ("listLocationsForModules".equals(method.getName())) {
-                            throw new InvocationTargetException(new IOException("forced"));
+                            throw new IOException("forced");
                         }
                         try {
                             return method.invoke(base, args);
@@ -227,6 +229,34 @@ public class MyJavaFileManagerTest {
                 }
                 assertTrue("Unexpected cause: " + cause,
                         cause instanceof UnsupportedOperationException || cause instanceof IOException);
+            }
+        }
+    }
+
+    @Test
+    public void invokeNamedMethodPropagatesRuntimeFailures() throws Exception {
+        assumeTrue("module methods need Java 9+", hasJavaFileManagerMethod("inferModuleName"));
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull("System compiler required", compiler);
+        try (StandardJavaFileManager base = compiler.getStandardFileManager(null, null, null)) {
+            StandardJavaFileManager proxy = (StandardJavaFileManager) Proxy.newProxyInstance(
+                    StandardJavaFileManager.class.getClassLoader(),
+                    new Class[]{StandardJavaFileManager.class},
+                    (proxyInstance, method, args) -> {
+                        if ("inferModuleName".equals(method.getName()))
+                            throw new IllegalStateException("forced runtime failure");
+                        try {
+                            return method.invoke(base, args);
+                        } catch (InvocationTargetException e) {
+                            throw e.getCause();
+                        }
+                    });
+            MyJavaFileManager manager = new MyJavaFileManager(proxy);
+            try {
+                manager.inferModuleName(StandardLocation.CLASS_PATH);
+                fail("runtime failure must not be hidden as missing module information");
+            } catch (IllegalStateException expected) {
+                assertEquals("forced runtime failure", expected.getMessage());
             }
         }
     }
@@ -269,6 +299,16 @@ public class MyJavaFileManagerTest {
             return StandardLocation.valueOf("SYSTEM_MODULES");
         } catch (IllegalArgumentException ignored) {
             return null;
+        }
+    }
+
+    private static boolean hasJavaFileManagerMethod(String name) {
+        try {
+            javax.tools.JavaFileManager.class.getMethod(
+                    name, javax.tools.JavaFileManager.Location.class);
+            return true;
+        } catch (NoSuchMethodException ignored) {
+            return false;
         }
     }
 

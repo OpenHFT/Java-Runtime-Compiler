@@ -50,6 +50,8 @@ public class CachedCompiler implements Closeable {
 
     private final Map<ClassLoader, Map<String, Class<?>>> loadedClassesMap = Collections.synchronizedMap(new WeakHashMap<>());
     private final Map<ClassLoader, MyJavaFileManager> fileManagerMap = Collections.synchronizedMap(new WeakHashMap<>());
+    private final Map<ClassLoader, Map<String, Object>> definitionLocks = Collections.synchronizedMap(new WeakHashMap<>());
+    private final Map<ClassLoader, Set<String>> incompleteLookupDefinitions = Collections.synchronizedMap(new WeakHashMap<>());
     /**
      * Optional testing hook to replace the file manager implementation.
      * <p>
@@ -157,35 +159,40 @@ public class CachedCompiler implements Closeable {
      * @param javaCode  source code to compile.
      * @return the loaded class, defined in the anchor's loader.
      * @throws ClassNotFoundException        if the compiled class cannot be found after definition.
+     * @throws IllegalArgumentException      if the lookup lacks package access or names another package.
      * @throws UnsupportedOperationException on Java&nbsp;8, where anchor mode is unavailable.
      */
     public Class<?> loadFromJava(@NotNull MethodHandles.Lookup anchor,
                                  @NotNull String className,
                                  @NotNull String javaCode) throws ClassNotFoundException {
+        Objects.requireNonNull(anchor, "anchor");
         validateClassName(className);
         if (!CompilerUtils.isAnchorDefineClassSupported())
             throw new UnsupportedOperationException(
                     "anchor/lookup class definition requires Java 9+ (MethodHandles.Lookup#defineClass)");
+        if ((anchor.lookupModes() & MethodHandles.Lookup.PACKAGE) == 0)
+            throw new IllegalArgumentException("anchor Lookup must have PACKAGE access");
+        final String anchorPackage = packageName(anchor.lookupClass().getName());
+        if (!anchorPackage.equals(packageName(className)))
+            throw new IllegalArgumentException("class " + className + " is not in anchor package " + anchorPackage);
+
         final ClassLoader classLoader = anchor.lookupClass().getClassLoader();
-        MyJavaFileManager fileManager = fileManagerMap.get(classLoader);
-        if (fileManager == null) {
-            StandardJavaFileManager standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
-            fileManager = getFileManager(standardJavaFileManager);
-            fileManagerMap.put(classLoader, fileManager);
+        final Map<String, Class<?>> loadedClasses = loadedClassesFor(classLoader);
+        synchronized (definitionLock(classLoader, className)) {
+            Class<?> primaryClass = loadedClass(loadedClasses, className);
+            if (primaryClass != null && !isLookupDefinitionIncomplete(classLoader, className))
+                return primaryClass;
+
+            final MyJavaFileManager fileManager = fileManagerFor(classLoader);
+            final Map<String, byte[]> compiled = compileFromJava(className, javaCode, DEFAULT_WRITER, fileManager);
+            if (!compiled.containsKey(className))
+                throw new ClassNotFoundException(className);
+
+            markLookupDefinitionIncomplete(classLoader, className);
+            primaryClass = defineCompiledWithLookup(anchor, className, compiled, loadedClasses);
+            markLookupDefinitionComplete(classLoader, className);
+            return primaryClass;
         }
-        final Map<String, byte[]> compiled = compileFromJava(className, javaCode, DEFAULT_WRITER, fileManager);
-        // Define the primary class first so nested classes resolve against an already-linked
-        // outer; the JDK links lazily so ordering within a package is otherwise unconstrained.
-        final byte[] primary = compiled.get(className);
-        if (primary != null)
-            CompilerUtils.defineClass(anchor, primary);
-        for (Map.Entry<String, byte[]> entry : compiled.entrySet()) {
-            if (entry.getKey().equals(className))
-                continue;
-            validateClassName(entry.getKey());
-            CompilerUtils.defineClass(anchor, entry.getValue());
-        }
-        return Class.forName(className, true, classLoader);
     }
 
     /**
@@ -208,7 +215,8 @@ public class CachedCompiler implements Closeable {
 
     /**
      * Compile source using the given writer and file manager. The resulting
-     * byte arrays are cached for the life of this compiler instance.
+     * byte arrays are cached for the life of this compiler instance, while the returned map
+     * contains only class names first produced by this compilation.
      *
      * @param className   name of the primary class
      * @param javaCode    source to compile
@@ -222,40 +230,45 @@ public class CachedCompiler implements Closeable {
                                         final @NotNull PrintWriter writer,
                                         MyJavaFileManager fileManager) {
         validateClassName(className);
-        Iterable<? extends JavaFileObject> compilationUnits;
-        if (sourceDir != null) {
-            String filename = className.replaceAll("\\.", '\\' + File.separator) + ".java";
-            File file = safeResolve(sourceDir, filename);
-            writeText(file, javaCode);
-            if (s_standardJavaFileManager == null)
-                s_standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
-            compilationUnits = s_standardJavaFileManager.getJavaFileObjects(file);
+        synchronized (fileManager) {
+            final List<JavaFileObject> currentCompilationUnits = new ArrayList<>();
+            Iterable<? extends JavaFileObject> compilationUnits;
+            if (sourceDir != null) {
+                String filename = className.replaceAll("\\.", '\\' + File.separator) + ".java";
+                File file = safeResolve(sourceDir, filename);
+                writeText(file, javaCode);
+                if (s_standardJavaFileManager == null)
+                    s_standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
+                for (JavaFileObject compilationUnit : s_standardJavaFileManager.getJavaFileObjects(file))
+                    currentCompilationUnits.add(compilationUnit);
+                compilationUnits = currentCompilationUnits;
 
-        } else {
-            javaFileObjects.put(className, new JavaSourceFromString(className, javaCode));
-            compilationUnits = new ArrayList<>(javaFileObjects.values()); // To prevent CME from compiler code
-        }
-        // reuse the same file manager to allow caching of jar files
-        boolean ok = s_compiler.getTask(writer, fileManager, new DiagnosticListener<JavaFileObject>() {
-            @Override
-            public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
-                if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
-                    writer.println(diagnostic);
-                }
+            } else {
+                JavaFileObject currentCompilationUnit = new JavaSourceFromString(className, javaCode);
+                javaFileObjects.put(className, currentCompilationUnit);
+                currentCompilationUnits.add(currentCompilationUnit);
+                compilationUnits = new ArrayList<>(javaFileObjects.values()); // To prevent CME from compiler code
             }
-        }, options, null, compilationUnits).call();
+            fileManager.prepareForCompilation(currentCompilationUnits);
+            // Reuse the same file manager to cache jar files. Serialisation also prevents
+            // concurrent compiler tasks from interleaving writes into its output buffers.
+            boolean ok = s_compiler.getTask(writer, fileManager, new DiagnosticListener<JavaFileObject>() {
+                @Override
+                public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
+                    if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
+                        writer.println(diagnostic);
+                    }
+                }
+            }, options, null, compilationUnits).call();
 
-        if (!ok) {
-            // compilation error, so we want to exclude this file from future compilation passes
-            if (sourceDir == null)
-                javaFileObjects.remove(className);
+            if (!ok) {
+                // compilation error, so we want to exclude this file from future compilation passes
+                if (sourceDir == null)
+                    javaFileObjects.remove(className);
 
-            // nothing to return due to compiler error
-            return Collections.emptyMap();
-        } else {
-            Map<String, byte[]> result = fileManager.getAllBuffers();
-
-            return result;
+                return Collections.emptyMap();
+            }
+            return fileManager.getBuffersForSources(currentCompilationUnits);
         }
     }
 
@@ -288,45 +301,40 @@ public class CachedCompiler implements Closeable {
         if (clazz != null)
             return clazz;
 
-        MyJavaFileManager fileManager = fileManagerMap.get(classLoader);
-        if (fileManager == null) {
-            StandardJavaFileManager standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
-            fileManager = getFileManager(standardJavaFileManager);
-            fileManagerMap.put(classLoader, fileManager);
-        }
-        final Map<String, byte[]> compiled = compileFromJava(className, javaCode, printWriter, fileManager);
-        for (Map.Entry<String, byte[]> entry : compiled.entrySet()) {
-            String className2 = entry.getKey();
-            validateClassName(className2);
+        synchronized (definitionLock(classLoader, className)) {
             synchronized (loadedClassesMap) {
-                if (loadedClasses.containsKey(className2))
-                    continue;
+                clazz = loadedClasses.get(className);
             }
-            byte[] bytes = entry.getValue();
-            if (classDir != null) {
-                String filename = className2.replaceAll("\\.", '\\' + File.separator) + ".class";
-                boolean changed = writeBytes(safeResolve(classDir, filename), bytes);
-                if (changed) {
-                    LOG.info("Updated {} in {}", className2, classDir);
-                }
-            }
+            if (clazz != null)
+                return clazz;
 
-            synchronized (className2.intern()) { // To prevent duplicate class definition error
+            MyJavaFileManager fileManager = fileManagerFor(classLoader);
+            final Map<String, byte[]> compiled = compileFromJava(className, javaCode, printWriter, fileManager);
+            for (Map.Entry<String, byte[]> entry : compiled.entrySet()) {
+                String className2 = entry.getKey();
+                validateClassName(className2);
+                byte[] bytes = entry.getValue();
+                if (classDir != null) {
+                    String filename = className2.replaceAll("\\.", '\\' + File.separator) + ".class";
+                    boolean changed = writeBytes(safeResolve(classDir, filename), bytes);
+                    if (changed) {
+                        LOG.info("Updated {} in {}", className2, classDir);
+                    }
+                }
+
                 synchronized (loadedClassesMap) {
                     if (loadedClasses.containsKey(className2))
                         continue;
-                }
-
-                Class<?> clazz2 = CompilerUtils.defineClass(classLoader, className2, bytes);
-                synchronized (loadedClassesMap) {
+                    Class<?> clazz2 = CompilerUtils.defineClass(classLoader, className2, bytes);
                     loadedClasses.put(className2, clazz2);
                 }
             }
+            synchronized (loadedClassesMap) {
+                loadedClasses.put(className, clazz = classLoader.loadClass(className));
+            }
+            markLookupDefinitionComplete(classLoader, className);
+            return clazz;
         }
-        synchronized (loadedClassesMap) {
-            loadedClasses.put(className, clazz = classLoader.loadClass(className));
-        }
-        return clazz;
     }
 
     /**
@@ -351,6 +359,143 @@ public class CachedCompiler implements Closeable {
         return fileManagerOverride != null
                 ? fileManagerOverride.apply(fm)
                 : new MyJavaFileManager(fm);
+    }
+
+    private MyJavaFileManager fileManagerFor(ClassLoader classLoader) {
+        synchronized (fileManagerMap) {
+            MyJavaFileManager fileManager = fileManagerMap.get(classLoader);
+            if (fileManager == null) {
+                StandardJavaFileManager standardJavaFileManager = s_compiler.getStandardFileManager(null, null, null);
+                fileManager = getFileManager(standardJavaFileManager);
+                fileManagerMap.put(classLoader, fileManager);
+            }
+            return fileManager;
+        }
+    }
+
+    private Map<String, Class<?>> loadedClassesFor(ClassLoader classLoader) {
+        synchronized (loadedClassesMap) {
+            Map<String, Class<?>> loadedClasses = loadedClassesMap.get(classLoader);
+            if (loadedClasses == null) {
+                loadedClasses = new LinkedHashMap<>();
+                loadedClassesMap.put(classLoader, loadedClasses);
+            }
+            return loadedClasses;
+        }
+    }
+
+    private Object definitionLock(ClassLoader classLoader, String className) {
+        synchronized (definitionLocks) {
+            Map<String, Object> loaderLocks = definitionLocks.get(classLoader);
+            if (loaderLocks == null) {
+                loaderLocks = new HashMap<>();
+                definitionLocks.put(classLoader, loaderLocks);
+            }
+            Object lock = loaderLocks.get(className);
+            if (lock == null) {
+                lock = new Object();
+                loaderLocks.put(className, lock);
+            }
+            return lock;
+        }
+    }
+
+    private Class<?> loadedClass(Map<String, Class<?>> loadedClasses, String className) {
+        synchronized (loadedClassesMap) {
+            return loadedClasses.get(className);
+        }
+    }
+
+    private Class<?> defineWithLookup(MethodHandles.Lookup anchor,
+                                      String className,
+                                      byte[] bytes,
+                                      Map<String, Class<?>> loadedClasses) {
+        validateClassName(className);
+        synchronized (loadedClassesMap) {
+            Class<?> loaded = loadedClasses.get(className);
+            if (loaded != null)
+                return loaded;
+            Class<?> defined = CompilerUtils.defineClass(anchor, bytes);
+            loadedClasses.put(className, defined);
+            return defined;
+        }
+    }
+
+    /**
+     * Define a compilation batch while allowing same-source supertypes to be emitted in any order.
+     * A failed batch remains marked incomplete so a later call cannot mistake a partially defined
+     * primary class for a successful cached load.
+     */
+    private Class<?> defineCompiledWithLookup(MethodHandles.Lookup anchor,
+                                              String primaryClassName,
+                                              Map<String, byte[]> compiled,
+                                              Map<String, Class<?>> loadedClasses) {
+        final Map<String, byte[]> pending = new LinkedHashMap<>(compiled);
+        Class<?> primaryClass = null;
+
+        while (!pending.isEmpty()) {
+            boolean madeProgress = false;
+            NoClassDefFoundError unresolvedDependency = null;
+            for (Iterator<Map.Entry<String, byte[]>> iterator = pending.entrySet().iterator(); iterator.hasNext(); ) {
+                final Map.Entry<String, byte[]> entry = iterator.next();
+                try {
+                    final Class<?> defined = defineWithLookup(anchor, entry.getKey(), entry.getValue(), loadedClasses);
+                    if (entry.getKey().equals(primaryClassName))
+                        primaryClass = defined;
+                    iterator.remove();
+                    madeProgress = true;
+                } catch (NoClassDefFoundError unresolved) {
+                    // Lookup#defineClass resolves direct supertypes immediately. Another output
+                    // from this batch may provide the missing class, so retry after making a pass.
+                    unresolvedDependency = unresolved;
+                }
+            }
+            if (!madeProgress) {
+                if (unresolvedDependency != null)
+                    throw unresolvedDependency;
+                throw new LinkageError("Unable to define compiled classes for " + primaryClassName);
+            }
+        }
+
+        if (primaryClass == null)
+            primaryClass = loadedClass(loadedClasses, primaryClassName);
+        if (primaryClass == null)
+            throw new LinkageError("Primary class was not defined: " + primaryClassName);
+        return primaryClass;
+    }
+
+    private boolean isLookupDefinitionIncomplete(ClassLoader classLoader, String className) {
+        synchronized (incompleteLookupDefinitions) {
+            final Set<String> incomplete = incompleteLookupDefinitions.get(classLoader);
+            return incomplete != null && incomplete.contains(className);
+        }
+    }
+
+    private void markLookupDefinitionIncomplete(ClassLoader classLoader, String className) {
+        synchronized (incompleteLookupDefinitions) {
+            Set<String> incomplete = incompleteLookupDefinitions.get(classLoader);
+            if (incomplete == null) {
+                incomplete = new HashSet<>();
+                incompleteLookupDefinitions.put(classLoader, incomplete);
+            }
+            incomplete.add(className);
+        }
+    }
+
+    private void markLookupDefinitionComplete(ClassLoader classLoader, String className) {
+        synchronized (incompleteLookupDefinitions) {
+            final Set<String> incomplete = incompleteLookupDefinitions.get(classLoader);
+            if (incomplete == null)
+                return;
+            incomplete.remove(className);
+            if (incomplete.isEmpty())
+                incompleteLookupDefinitions.remove(classLoader);
+        }
+    }
+
+    private static String packageName(String className) {
+        final int separator = className.lastIndexOf('.');
+        return separator < 0 ? "" : className.substring(0, separator);
     }
 
     private static void validateClassName(String className) {

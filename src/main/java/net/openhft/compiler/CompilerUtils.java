@@ -7,7 +7,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.misc.Unsafe;
 
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
@@ -16,7 +15,6 @@ import java.io.*;
 import java.lang.invoke.MethodHandles;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
@@ -41,7 +39,6 @@ public enum CompilerUtils {
     public static final CachedCompiler CACHED_COMPILER = new CachedCompiler(null, null);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CompilerUtils.class);
-    private static final Method DEFINE_CLASS_METHOD;
     // Anchor/lookup class-definition strategy (issue #91). Resolved reflectively so the Java 8
     // source root still compiles and runs: MethodHandles.Lookup#defineClass(byte[]) only exists
     // on Java 9+. When null (Java 8) the anchor mode is unavailable and callers fall back to the
@@ -51,29 +48,6 @@ public enum CompilerUtils {
     private static final String JAVA_CLASS_PATH = "java.class.path";
     static JavaCompiler s_compiler;
     static StandardJavaFileManager s_standardJavaFileManager;
-
-    /*
-     * Use sun.misc.Unsafe to gain access to ClassLoader.defineClass. This allows
-     * compiled bytecode to be defined without standard reflection checks. The
-     * fallback path calls setAccessible if the internal 'override' field is absent.
-     */
-    static {
-        try {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            Unsafe u = (Unsafe) theUnsafe.get(null);
-            DEFINE_CLASS_METHOD = ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class, int.class, int.class);
-            try {
-                Field f = AccessibleObject.class.getDeclaredField("override");
-                long offset = u.objectFieldOffset(f);
-                u.putBoolean(DEFINE_CLASS_METHOD, offset, true);
-            } catch (NoSuchFieldException e) {
-                DEFINE_CLASS_METHOD.setAccessible(true);
-            }
-        } catch (NoSuchMethodException | IllegalAccessException | NoSuchFieldException e) {
-            throw new AssertionError(e);
-        }
-    }
 
     static {
         reset();
@@ -196,20 +170,13 @@ public enum CompilerUtils {
      * @throws AssertionError if {@code defineClass} cannot be invoked.
      */
     public static Class<?> defineClass(@Nullable ClassLoader classLoader, @NotNull String className, @NotNull byte[] bytes) {
-        try {
-            return (Class) DEFINE_CLASS_METHOD.invoke(classLoader, className, bytes, 0, bytes.length);
-        } catch (IllegalAccessException e) {
-            throw new AssertionError(e);
-        } catch (InvocationTargetException e) {
-            //noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException
-            throw new AssertionError(e.getCause());
-        }
+        return LegacyClassDefiner.defineClass(classLoader, className, bytes);
     }
 
     /**
      * Whether the anchor/lookup class-definition strategy (issue #91) is available on the
      * running JVM. {@code true} on Java&nbsp;9+, {@code false} on Java&nbsp;8, where
-     * {@link java.lang.invoke.MethodHandles.Lookup#defineClass(byte[])} does not exist.
+     * {@code MethodHandles.Lookup#defineClass(byte[])} does not exist.
      *
      * @return {@code true} if {@link #defineClass(MethodHandles.Lookup, byte[])} can be used.
      */
@@ -221,20 +188,21 @@ public enum CompilerUtils {
      * Defines a class using the <em>anchor/lookup</em> strategy (issue #91): the class in
      * {@code bytes} is defined in the package and {@link ClassLoader} of the supplied
      * {@code anchor} {@link MethodHandles.Lookup} via the public
-     * {@link java.lang.invoke.MethodHandles.Lookup#defineClass(byte[])} (Java&nbsp;9+).
+     * {@code MethodHandles.Lookup#defineClass(byte[])} (Java&nbsp;9+).
      * <p>
      * Unlike {@link #defineClass(ClassLoader, String, byte[])} this uses <strong>no</strong>
      * {@code sun.misc.Unsafe} and no {@code setAccessible}: the caller vouches for the target by
      * handing over a full-privilege {@code Lookup} obtained in the destination package. The JDK
      * enforces that the class in {@code bytes} is in the <em>same run-time package</em> as
      * {@code anchor.lookupClass()} and that the anchor has {@code PACKAGE} access; a violation
-     * surfaces as {@link IllegalArgumentException}/{@link IllegalAccessException} from the JDK,
-     * not as a corrupted definition. This is the recommended path when the caller controls the
-     * destination package; use the compiler-owned child loader for arbitrary package names.
+     * surfaces as {@link IllegalArgumentException}, not as a corrupted definition. This is the
+     * recommended path when the caller controls the destination package; use the compiler-owned
+     * child loader for arbitrary package names.
      *
      * @param anchor a {@code Lookup} with full privileges in the destination package.
      * @param bytes  compiled bytecode whose class is in the anchor's package.
      * @return the defined class.
+     * @throws IllegalArgumentException if the lookup lacks package access or the bytes name another package.
      * @throws UnsupportedOperationException on Java&nbsp;8, where the API does not exist.
      */
     public static Class<?> defineClass(@NotNull MethodHandles.Lookup anchor, @NotNull byte[] bytes) {
@@ -244,12 +212,16 @@ public enum CompilerUtils {
         if (define == null)
             throw new UnsupportedOperationException(
                     "anchor/lookup class definition requires Java 9+ (MethodHandles.Lookup#defineClass)");
+        if ((anchor.lookupModes() & MethodHandles.Lookup.PACKAGE) == 0)
+            throw new IllegalArgumentException("anchor Lookup must have PACKAGE access");
         try {
             return (Class<?>) define.invoke(anchor, (Object) bytes);
         } catch (IllegalAccessException e) {
-            throw new AssertionError(e);
+            throw new IllegalStateException("Unable to invoke MethodHandles.Lookup#defineClass", e);
         } catch (InvocationTargetException e) {
             final Throwable cause = e.getCause();
+            if (cause instanceof IllegalAccessException)
+                throw new IllegalArgumentException("anchor Lookup cannot define a class in this package", cause);
             if (cause instanceof RuntimeException)
                 throw (RuntimeException) cause;
             if (cause instanceof Error)
@@ -264,6 +236,47 @@ public enum CompilerUtils {
             return MethodHandles.Lookup.class.getMethod("defineClass", byte[].class);
         } catch (NoSuchMethodException e) {
             return null; // Java 8: anchor mode unavailable; the Unsafe path remains.
+        }
+    }
+
+    /**
+     * Isolates the unsupported class-loader definition machinery so the lookup path never
+     * initialises or resolves {@code sun.misc.Unsafe}.
+     */
+    private static final class LegacyClassDefiner {
+        private static final Method DEFINE_CLASS_METHOD = resolveDefineClassMethod();
+
+        private static Method resolveDefineClassMethod() {
+            try {
+                Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+                java.lang.reflect.Field theUnsafe = unsafeClass.getDeclaredField("theUnsafe");
+                theUnsafe.setAccessible(true);
+                Object unsafe = theUnsafe.get(null);
+                Method defineClass = ClassLoader.class.getDeclaredMethod(
+                        "defineClass", String.class, byte[].class, int.class, int.class);
+                try {
+                    java.lang.reflect.Field override = AccessibleObject.class.getDeclaredField("override");
+                    Method objectFieldOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.reflect.Field.class);
+                    long offset = (Long) objectFieldOffset.invoke(unsafe, override);
+                    Method putBoolean = unsafeClass.getMethod("putBoolean", Object.class, long.class, boolean.class);
+                    putBoolean.invoke(unsafe, defineClass, offset, true);
+                } catch (NoSuchFieldException e) {
+                    defineClass.setAccessible(true);
+                }
+                return defineClass;
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
+        }
+
+        private static Class<?> defineClass(ClassLoader classLoader, String className, byte[] bytes) {
+            try {
+                return (Class<?>) DEFINE_CLASS_METHOD.invoke(classLoader, className, bytes, 0, bytes.length);
+            } catch (IllegalAccessException e) {
+                throw new AssertionError(e);
+            } catch (InvocationTargetException e) {
+                throw new AssertionError(e.getCause());
+            }
         }
     }
 
