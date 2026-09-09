@@ -5,7 +5,7 @@ Chronicle Software
 :sectnums:
 :source-highlighter: rouge
 
-image:https://img.shields.io/maven-central/v/net.openhft/compiler.svg[]
+image:https://img.shields.io/maven-central/v/net.openhft/compiler.svg[Maven Central,link=https://central.sonatype.com/artifact/net.openhft/compiler]
 image:https://javadoc.io/badge2/net.openhft/compiler/javadoc.svg[]
 image:https://img.shields.io/badge/release%20notes-subscribe-brightgreen[link="https://chronicle.software/release-notes/"]
 image:https://sonarcloud.io/api/project_badges/measure?project=OpenHFT_Java-Runtime-Compiler&metric=alert_status[]
