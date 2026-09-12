@@ -10,9 +10,8 @@ Chronicle Software
 :css-signature: demo
 :source-highlighter: rouge
 
-image:https://maven-badges.herokuapp.com/maven-central/net.openhft/compiler/badge.svg[]
+image:https://img.shields.io/maven-central/v/net.openhft/compiler.svg[Maven Central,link=https://central.sonatype.com/artifact/net.openhft/compiler]
 image:https://javadoc.io/badge2/net.openhft/compiler/javadoc.svg[]
-image:https://img.shields.io/badge/release%20notes-subscribe-brightgreen[link="https://chronicle.software/release-notes/"]
 image:https://sonarcloud.io/api/project_badges/measure?project=OpenHFT_Java-Runtime-Compiler&metric=alert_status[]
 
 toc::[]
@@ -111,6 +110,7 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 == Documentation & Requirements
 
 * link:src/main/docs/project-requirements.adoc[Project requirements] outline functional, non-functional, and compliance obligations.
+* link:RELEASE_NOTES.adoc[Release notes] provide the tagged release history.
 
 == FAQ / Troubleshooting
 
