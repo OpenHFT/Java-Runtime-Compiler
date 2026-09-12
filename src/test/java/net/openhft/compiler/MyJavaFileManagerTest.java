@@ -6,7 +6,6 @@ package net.openhft.compiler;
 import org.junit.Test;
 
 import javax.tools.FileObject;
-import javax.tools.ForwardingJavaFileManager;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.SimpleJavaFileObject;
@@ -61,6 +60,7 @@ public class MyJavaFileManagerTest {
         }
     }
 
+    @SuppressWarnings("rawtypes")
     @Test
     public void getJavaFileForInputDelegatesWhenBufferMissing() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -98,7 +98,7 @@ public class MyJavaFileManagerTest {
             JavaFileObject result = manager.getJavaFileForInput(StandardLocation.CLASS_OUTPUT,
                     "example.KindMismatch", JavaFileObject.Kind.SOURCE);
             assertTrue("Delegate should be consulted when buffer missing", delegated.get());
-            assertTrue("Result should match delegate outcome", result == expected);
+            assertSame("Result should match delegate outcome", result, expected);
         }
     }
 
@@ -140,7 +140,7 @@ public class MyJavaFileManagerTest {
                     Iterable<Set<javax.tools.JavaFileManager.Location>> locations =
                             manager.listLocationsForModules(modulesLocation);
                     for (Set<javax.tools.JavaFileManager.Location> ignored : locations) {
-                        // no-op
+                        assertNotNull("Module location set should not be null", ignored);
                     }
                 } catch (UnsupportedOperationException ignored) {
                     // Delegate does not expose module support on this JDK.

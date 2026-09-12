@@ -1,8 +1,13 @@
 = Chronicle Runtime Compiler
+:toc:
+:lang: en-GB
+:source-highlighter: rouge
 Chronicle Software
-:css-signature: demo
-:toc: macro
+:toc:
 :sectnums:
+:toc: macro
+:lang: en-GB
+:css-signature: demo
 :source-highlighter: rouge
 
 image:https://img.shields.io/maven-central/v/net.openhft/compiler.svg[Maven Central,link=https://central.sonatype.com/artifact/net.openhft/compiler]
