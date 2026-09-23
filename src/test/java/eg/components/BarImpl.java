@@ -6,7 +6,6 @@ package eg.components;
 /**
  * Sample implementation used for tests.
  */
-
 public class BarImpl implements Bar {
     private final int i;
     private final Tee tee;
