@@ -8,6 +8,7 @@
 
 JRC-FN-001 :: The library *MUST* compile Java source provided as a `String` and return a `Class<?>` at runtime.
 JRC-FN-002 :: The public API *MUST* expose a singleton _cached compiler_ capable of avoiding redundant compilations.
+Generated classes remain reusable while live, without the class cache itself retaining discarded defining loaders. A replacement loader can compile a new version. Custom file-manager retention is a separate lifetime concern; no collection deadline is guaranteed.
 JRC-FN-003 :: The library *MUST* support the compilation of nested classes contained in the same source unit.
 JRC-FN-004 :: Callers *MUST* be able to supply a custom `ClassLoader`; default is the current context loader.
 JRC-FN-005 :: A _debug mode_ *MUST* emit `.java` and `.class` artefacts to configurable directories for IDE inspection.

@@ -13,6 +13,7 @@ import javax.tools.DiagnosticListener;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import java.io.*;
+import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.*;
@@ -47,7 +48,7 @@ public class CachedCompiler implements Closeable {
     private static final Pattern CLASS_NAME_PATTERN = Pattern.compile("[\\p{Alnum}_$.\\-]+");
     private static final Pattern CLASS_NAME_SEGMENT_PATTERN = Pattern.compile("[\\p{Alnum}_$]+(?:-[\\p{Alnum}_$]+)*");
 
-    private final Map<ClassLoader, Map<String, Class<?>>> loadedClassesMap = Collections.synchronizedMap(new WeakHashMap<>());
+    private final Map<ClassLoader, Map<String, WeakReference<Class<?>>>> loadedClassesMap = Collections.synchronizedMap(new WeakHashMap<>());
     private final Map<ClassLoader, MyJavaFileManager> fileManagerMap = Collections.synchronizedMap(new WeakHashMap<>());
     /**
      * Optional testing hook to replace the file manager implementation.
@@ -124,7 +125,8 @@ public class CachedCompiler implements Closeable {
 
     /**
      * Compile the source using the supplied class loader. Cached classes are
-     * stored per loader key.
+     * stored weakly per loader key, so this cache alone does not keep a
+     * discarded defining loader alive. Custom file managers may retain it.
      *
      * @param classLoader loader to define the class with
      * @param className   expected binary name
@@ -227,13 +229,17 @@ public class CachedCompiler implements Closeable {
                                  @NotNull String javaCode,
                                  @Nullable PrintWriter writer) throws ClassNotFoundException {
         Class<?> clazz = null;
-        Map<String, Class<?>> loadedClasses;
+        Map<String, WeakReference<Class<?>>> loadedClasses;
         synchronized (loadedClassesMap) {
             loadedClasses = loadedClassesMap.get(classLoader);
             if (loadedClasses == null)
                 loadedClassesMap.put(classLoader, loadedClasses = new LinkedHashMap<>());
-            else
-                clazz = loadedClasses.get(className);
+            else {
+                WeakReference<Class<?>> reference = loadedClasses.get(className);
+                clazz = reference == null ? null : reference.get();
+                if (clazz == null)
+                    loadedClasses.remove(className);
+            }
         }
         PrintWriter printWriter = writer == null ? DEFAULT_WRITER : writer;
         if (clazz != null)
@@ -270,12 +276,12 @@ public class CachedCompiler implements Closeable {
 
                 Class<?> clazz2 = CompilerUtils.defineClass(classLoader, className2, bytes);
                 synchronized (loadedClassesMap) {
-                    loadedClasses.put(className2, clazz2);
+                    loadedClasses.put(className2, new WeakReference<>(clazz2));
                 }
             }
         }
         synchronized (loadedClassesMap) {
-            loadedClasses.put(className, clazz = classLoader.loadClass(className));
+            loadedClasses.put(className, new WeakReference<>(clazz = classLoader.loadClass(className)));
         }
         return clazz;
     }
