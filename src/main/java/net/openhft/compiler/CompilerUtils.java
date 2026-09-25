@@ -245,9 +245,10 @@ public enum CompilerUtils {
             dis = new DataInputStream(new FileInputStream(file));
             dis.readFully(bytes);
         } catch (IOException e) {
-            close(dis);
             LOGGER.warn("Unable to read {}", file, e);
             throw new IllegalStateException("Unable to read file " + file, e);
+        } finally {
+            close(dis);
         }
 
         return bytes;
@@ -293,6 +294,8 @@ public enum CompilerUtils {
 
     /**
      * Writes the given bytes to the specified file. Not thread-safe.
+     * Owned streams are closed before returning or attempting rollback. Close
+     * I/O failures are logged without replacing a read or write failure.
      *
      * @param file  destination file.
      * @param bytes bytes to write.
@@ -315,10 +318,14 @@ public enum CompilerUtils {
 
         FileOutputStream fos = null;
         try {
-            fos = new FileOutputStream(file);
-            fos.write(bytes);
+            try {
+                fos = new FileOutputStream(file);
+                fos.write(bytes);
+            } finally {
+                // Keep the existing quiet-close policy, before rollback touches the file.
+                close(fos);
+            }
         } catch (IOException e) {
-            close(fos);
             LOGGER.warn("Unable to write {} as {}", file, decodeUTF8(bytes), e);
             file.delete();
             if (bak != null)

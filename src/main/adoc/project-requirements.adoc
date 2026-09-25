@@ -11,6 +11,7 @@ JRC-FN-002 :: The public API *MUST* expose a singleton _cached compiler_ capable
 JRC-FN-003 :: The library *MUST* support the compilation of nested classes contained in the same source unit.
 JRC-FN-004 :: Callers *MUST* be able to supply a custom `ClassLoader`; default is the current context loader.
 JRC-FN-005 :: A _debug mode_ *MUST* emit `.java` and `.class` artefacts to configurable directories for IDE inspection.
+The file helpers close their owned streams on success and failure, including unchanged-content writes. Write-failure cleanup closes the output before deleting the failed file or restoring its backup. Close I/O failures remain logged rather than replacing the primary failure.
 
 === Non-Functional – Performance (NF-P)
 
