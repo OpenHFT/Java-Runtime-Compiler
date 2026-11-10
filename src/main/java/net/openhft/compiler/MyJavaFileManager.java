@@ -246,9 +246,15 @@ public class MyJavaFileManager implements JavaFileManager {
                     return (T) method.invoke(fileManager, location);
                 } catch (IllegalAccessException | InvocationTargetException e) {
                     throw new UnsupportedOperationException("Unable to invoke method " + name, e);
+                } catch (RuntimeException e) {
+                    throw withModuleAccessHint(e, method);
                 }
             }
         }
         throw new UnsupportedOperationException("Unable to find method " + name);
+    }
+
+    static RuntimeException withModuleAccessHint(RuntimeException e, Method method) {
+        return RuntimeAccessDiagnostics.inaccessible(e, method, false);
     }
 }

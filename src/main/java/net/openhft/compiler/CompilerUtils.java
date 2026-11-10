@@ -62,7 +62,11 @@ public enum CompilerUtils {
                 long offset = u.objectFieldOffset(f);
                 u.putBoolean(DEFINE_CLASS_METHOD, offset, true);
             } catch (NoSuchFieldException e) {
-                DEFINE_CLASS_METHOD.setAccessible(true);
+                try {
+                    DEFINE_CLASS_METHOD.setAccessible(true);
+                } catch (RuntimeException inaccessible) {
+                    throw RuntimeAccessDiagnostics.inaccessible(inaccessible, DEFINE_CLASS_METHOD, true);
+                }
             }
         } catch (NoSuchMethodException | IllegalAccessException | NoSuchFieldException e) {
             throw new AssertionError(e);
@@ -92,7 +96,7 @@ public enum CompilerUtils {
                 Method create = javacTool.getMethod("create");
                 s_compiler = (JavaCompiler) create.invoke(null);
             } catch (Exception e) {
-                throw new AssertionError(e);
+                throw RuntimeAccessDiagnostics.missingCompiler(e);
             }
         }
     }
