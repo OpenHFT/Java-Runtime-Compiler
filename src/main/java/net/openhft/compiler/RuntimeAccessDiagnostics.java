@@ -21,6 +21,8 @@ final class RuntimeAccessDiagnostics {
         return "For classpath deployment, add " + (classLoader ? CLASS_LOADER : FILE_MANAGER)
                 + "; named modules need a target appropriate to their module name";
     }
+    // InaccessibleObjectException does not exist on Java 8, which must still load this class.
+    @SuppressWarnings("java:S1872")
     static RuntimeException inaccessible(RuntimeException failure, Method method, boolean classLoader) {
         if (!"java.lang.reflect.InaccessibleObjectException".equals(failure.getClass().getName())) return failure;
         String runtime = System.getProperty("java.specification.version");
