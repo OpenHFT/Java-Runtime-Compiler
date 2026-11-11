@@ -43,6 +43,32 @@ public class CachedCompilerAdditionalTest {
     }
 
     @Test
+    public void compileFromJavaReturnsOnlyCurrentSourceOutputs() throws Exception {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull("System compiler required", compiler);
+
+        try (StandardJavaFileManager standardManager = compiler.getStandardFileManager(null, null, null)) {
+            CachedCompiler cachedCompiler = new CachedCompiler(null, null);
+            MyJavaFileManager fileManager = new MyJavaFileManager(standardManager);
+            Map<String, byte[]> first = cachedCompiler.compileFromJava(
+                    "coverage.CurrentA",
+                    "package coverage; public class CurrentA { static class Nested {} }",
+                    fileManager);
+            Map<String, byte[]> second = cachedCompiler.compileFromJava(
+                    "coverage.CurrentB",
+                    "package coverage; public class CurrentB { Runnable r = new Runnable() { public void run() {} }; }",
+                    fileManager);
+
+            assertTrue(first.containsKey("coverage.CurrentA"));
+            assertTrue(first.containsKey("coverage.CurrentA$Nested"));
+            assertTrue(second.containsKey("coverage.CurrentB"));
+            assertTrue(second.containsKey("coverage.CurrentB$1"));
+            assertFalse(second.containsKey("coverage.CurrentA"));
+            assertFalse(second.containsKey("coverage.CurrentA$Nested"));
+        }
+    }
+
+    @Test
     public void compileFromJavaReturnsEmptyMapOnFailure() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull("System compiler required", compiler);
