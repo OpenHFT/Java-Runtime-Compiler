@@ -36,7 +36,6 @@ public class MyJavaFileManager implements JavaFileManager {
 
     // Unsafe sets AccessibleObject.override for speed and JDK-9+ compatibility
     static {
-        long offset;
         try {
             Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
             theUnsafe.setAccessible(true);
@@ -44,13 +43,18 @@ public class MyJavaFileManager implements JavaFileManager {
         } catch (Exception ex) {
             throw new AssertionError(ex);
         }
+        OVERRIDE_OFFSET = overrideOffset();
+    }
+
+    // Java 8 needs the override field; newer JDKs without it select the reflective path.
+    @SuppressWarnings({"deprecation", "java:S1874"})
+    private static long overrideOffset() {
         try {
-            Field f = AccessibleObject.class.getDeclaredField("override");
-            offset = unsafe.objectFieldOffset(f);
-        } catch (NoSuchFieldException e) {
-            offset = 0;
+            Field field = AccessibleObject.class.getDeclaredField("override");
+            return unsafe.objectFieldOffset(field);
+        } catch (NoSuchFieldException absent) {
+            return 0;
         }
-        OVERRIDE_OFFSET = offset;
     }
 
     private final StandardJavaFileManager fileManager;

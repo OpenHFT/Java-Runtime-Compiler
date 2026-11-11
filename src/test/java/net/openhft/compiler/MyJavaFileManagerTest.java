@@ -35,7 +35,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
-import static org.junit.Assume.assumeTrue;
 
 public class MyJavaFileManagerTest {
 
