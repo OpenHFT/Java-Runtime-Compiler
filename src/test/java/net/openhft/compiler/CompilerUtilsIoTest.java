@@ -12,6 +12,8 @@ import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -31,7 +33,7 @@ public class CompilerUtilsIoTest {
         assertTrue("First write should report changes", written);
 
         boolean unchanged = CompilerUtils.writeText(file, "hello");
-        assertTrue("Repeat write with identical content should be treated as unchanged", !unchanged);
+        assertFalse("Repeat write with identical content should be treated as unchanged", unchanged);
 
         boolean changed = CompilerUtils.writeText(file, "different");
         assertTrue("Modified content should trigger a rewrite", changed);
@@ -109,7 +111,7 @@ public class CompilerUtilsIoTest {
     public void addClassPathHandlesMissingDirectory() {
         Path nonExisting = Paths.get("not-existing-" + System.nanoTime());
         boolean result = CompilerUtils.addClassPath(nonExisting.toString());
-        assertTrue("Missing directories should return false", !result);
+        assertFalse("Missing directories should return false", result);
     }
 
     @Test
@@ -136,7 +138,7 @@ public class CompilerUtilsIoTest {
         Method readBytes = CompilerUtils.class.getDeclaredMethod("readBytes", File.class);
         readBytes.setAccessible(true);
         Object missing = readBytes.invoke(null, new File("definitely-missing-" + System.nanoTime()));
-        assertEquals(null, missing);
+        assertNull(missing);
 
         Path tempFile = Files.createTempFile("compiler-utils-bytes", ".bin");
         Files.write(tempFile, "bytes".getBytes(StandardCharsets.UTF_8));
@@ -165,13 +167,13 @@ public class CompilerUtilsIoTest {
         Method method = CompilerUtils.class.getDeclaredMethod("getInputStream", String.class);
         method.setAccessible(true);
         try (InputStream is = (InputStream) method.invoke(null, "=inline-data")) {
-            String value = new String(readFully(is));
+            String value = new String(readFully(is), StandardCharsets.UTF_8);
             assertEquals("inline-data", value);
         }
         Path tempFile = Files.createTempFile("compiler-utils-stream", ".txt");
         Files.write(tempFile, "file-data".getBytes(StandardCharsets.UTF_8));
         try (InputStream is = (InputStream) method.invoke(null, tempFile.toString())) {
-            String value = new String(readFully(is));
+            String value = new String(readFully(is), StandardCharsets.UTF_8);
             assertEquals("file-data", value);
         }
     }
@@ -190,15 +192,16 @@ public class CompilerUtilsIoTest {
         Method method = CompilerUtils.class.getDeclaredMethod("getInputStream", String.class);
         method.setAccessible(true);
         ClassLoader original = Thread.currentThread().getContextClassLoader();
-        ClassLoader loader = new ClassLoader(original) {
+        ClassLoader loader = AccessController.doPrivileged(
+                (PrivilegedAction<ClassLoader>) () -> new ClassLoader(original) {
             @Override
             public InputStream getResourceAsStream(String name) {
-                if ("/fallback-resource".equals(name)) {
-                    return new ByteArrayInputStream("fallback".getBytes(StandardCharsets.UTF_8));
+                    if ("/fallback-resource".equals(name)) {
+                        return new ByteArrayInputStream("fallback".getBytes(StandardCharsets.UTF_8));
+                    }
+                    return null;
                 }
-                return null;
-            }
-        };
+        });
         Thread.currentThread().setContextClassLoader(loader);
         try (InputStream is = (InputStream) method.invoke(null, "fallback-resource")) {
             assertEquals("fallback", new String(readFully(is), StandardCharsets.UTF_8));

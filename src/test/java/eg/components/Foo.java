@@ -3,15 +3,16 @@
  */
 package eg.components;
 
-@SuppressWarnings("QuestionableName")
 /**
  * Simple data holder used to demonstrate dynamic compilation.
  */
+@SuppressWarnings("QuestionableName")
 public class Foo {
-    private final Bar bar;
-    private final Bar copy;
+    @SuppressWarnings("unused")
+    public final Bar bar;
+    @SuppressWarnings("unused")
+    public final Bar copy;
     public final String s;
-    private final int i;
 
     /**
      * Creates a new instance.
@@ -25,6 +26,5 @@ public class Foo {
         this.bar = bar;
         this.copy = copy;
         this.s = s;
-        this.i = i;
     }
 }

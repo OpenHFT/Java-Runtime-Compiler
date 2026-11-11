@@ -8,24 +8,19 @@ import eg.components.Foo;
 import eg.components.TeeImpl;
 
 public class FooBarTee {
-    private final String name;
-    private final TeeImpl tee;
-    private final BarImpl bar;
-    private final BarImpl copy;
-    public Foo foo;
+    public final Foo foo;
 
     public FooBarTee(String name) {
-        this.name = name;
 
-        tee = new TeeImpl("test");
+        TeeImpl tee = new TeeImpl("test");
 
-        bar = new BarImpl(tee, 55);
+        BarImpl bar = new BarImpl(tee, 55);
 
-        copy = new BarImpl(tee, 555);
+        BarImpl copy = new BarImpl(tee, 555);
 
         // ${generatedDate}
         // Build scripts replace the token with the current date.
-        foo = new Foo(bar, copy, "generated test ${generatedDate}", 5);
+        foo = new Foo(bar, copy, "generated test ${generatedDate}", name.length());
     }
 
     public void start() {

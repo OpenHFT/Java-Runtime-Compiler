@@ -8,11 +8,11 @@ import org.jetbrains.annotations.NotNull;
 import javax.tools.SimpleJavaFileObject;
 import java.net.URI;
 
-/*
- * An internal SimpleJavaFileObject implementation representing Java source
- * code provided as a String, allowing the Java compiler to read source
- * directly from memory. Example URI: string:///com/example/Hello.java. The
- * contents are expected to be UTF-8.
+/**
+ * {@link javax.tools.JavaFileObject} backed by a String of source code.
+ * <p>
+ * Allows the JDK compiler to consume in-memory source via a synthetic URI such as
+ * {@code string:///com/example/Hello.java}, avoiding the need for temporary files.
  */
 class JavaSourceFromString extends SimpleJavaFileObject {
     /**

@@ -31,7 +31,7 @@ import java.util.concurrent.TimeoutException;
  */
 public class MyJavaFileManager implements JavaFileManager {
     private static final Logger LOG = LoggerFactory.getLogger(MyJavaFileManager.class);
-    private final static Unsafe unsafe;
+    private static final Unsafe unsafe;
     private static final long OVERRIDE_OFFSET;
 
     // Unsafe sets AccessibleObject.override for speed and JDK-9+ compatibility
@@ -211,11 +211,11 @@ public class MyJavaFileManager implements JavaFileManager {
             } catch (InterruptedException t) {
                 Thread.currentThread().interrupt();
 
-                LOG.warn("Interrupted while waiting for compilation result [class=" + e.getKey() + "]");
+                LOG.warn("Interrupted while waiting for compilation result [class={}]", e.getKey());
 
                 break;
             } catch (ExecutionException | TimeoutException t) {
-                LOG.warn("Failed to wait for compilation result [class=" + e.getKey() + "]", t);
+                LOG.warn("Failed to wait for compilation result [class={}]", e.getKey(), t);
 
                 continue;
             }
