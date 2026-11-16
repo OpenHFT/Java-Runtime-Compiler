@@ -240,12 +240,9 @@ public enum CompilerUtils {
         if (len > Runtime.getRuntime().totalMemory() / 10)
             throw new IllegalStateException("Attempted to read large file " + file + " was " + len + " bytes.");
         byte[] bytes = new byte[(int) len];
-        DataInputStream dis = null;
-        try {
-            dis = new DataInputStream(new FileInputStream(file));
+        try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
             dis.readFully(bytes);
         } catch (IOException e) {
-            close(dis);
             LOGGER.warn("Unable to read {}", file, e);
             throw new IllegalStateException("Unable to read file " + file, e);
         }
@@ -313,12 +310,9 @@ public enum CompilerUtils {
             file.renameTo(bak);
         }
 
-        FileOutputStream fos = null;
-        try {
-            fos = new FileOutputStream(file);
+        try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(bytes);
         } catch (IOException e) {
-            close(fos);
             LOGGER.warn("Unable to write {} as {}", file, decodeUTF8(bytes), e);
             file.delete();
             if (bak != null)
