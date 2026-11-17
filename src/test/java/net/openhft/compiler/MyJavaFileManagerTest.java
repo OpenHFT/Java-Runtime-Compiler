@@ -161,14 +161,10 @@ public class MyJavaFileManagerTest {
         try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
             MyJavaFileManager manager = new MyJavaFileManager(delegate);
             java.lang.reflect.Method method = MyJavaFileManager.class.getDeclaredMethod(
-                    "invokeNamedMethodIfAvailable", javax.tools.JavaFileManager.Location.class, String.class);
+                    "invokeNamedMethodIfAvailable", javax.tools.JavaFileManager.Location.class, String.class, Object.class);
             method.setAccessible(true);
-            try {
-                method.invoke(manager, StandardLocation.CLASS_PATH, "nonExistingMethod");
-                fail("Expected UnsupportedOperationException when method is absent");
-            } catch (java.lang.reflect.InvocationTargetException expected) {
-                assertTrue(expected.getCause() instanceof UnsupportedOperationException);
-            }
+            Object fallback = new Object();
+            assertSame(fallback, method.invoke(manager, StandardLocation.CLASS_PATH, "nonExistingMethod", fallback));
         }
     }
 
@@ -182,7 +178,7 @@ public class MyJavaFileManagerTest {
                     new Class[]{StandardJavaFileManager.class},
                     (proxyInstance, method, args) -> {
                         if ("listLocationsForModules".equals(method.getName())) {
-                            throw new InvocationTargetException(new IOException("forced"));
+                            throw new IOException("forced");
                         }
                         try {
                             return method.invoke(base, args);
@@ -191,19 +187,16 @@ public class MyJavaFileManagerTest {
                         }
                     });
             MyJavaFileManager manager = new MyJavaFileManager(proxy);
-            java.lang.reflect.Method method = MyJavaFileManager.class.getDeclaredMethod(
-                    "invokeNamedMethodIfAvailable", javax.tools.JavaFileManager.Location.class, String.class);
-            method.setAccessible(true);
+            if (resolveSystemModules() == null) {
+                assertFalse(manager.listLocationsForModules(StandardLocation.CLASS_PATH).iterator().hasNext());
+                return;
+            }
             try {
-                method.invoke(manager, StandardLocation.CLASS_PATH, "listLocationsForModules");
+                manager.listLocationsForModules(resolveSystemModules());
                 fail("Expected invocation failure to be wrapped");
-            } catch (InvocationTargetException expected) {
-                Throwable cause = expected.getCause();
-                if (cause instanceof InvocationTargetException) {
-                    cause = ((InvocationTargetException) cause).getCause();
-                }
-                assertTrue("Unexpected cause: " + cause,
-                        cause instanceof UnsupportedOperationException || cause instanceof IOException);
+            } catch (UnsupportedOperationException expected) {
+                assertTrue(expected.getCause() instanceof IOException);
+                assertEquals("forced", expected.getCause().getMessage());
             }
         }
     }
