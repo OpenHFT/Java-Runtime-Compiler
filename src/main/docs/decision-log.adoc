@@ -1,3 +1,10 @@
+=== [RC-FN-003] Dispatch module queries through the public interface
+
+* Date: 2026-11-17
+* Decision: Reflective module queries use the public `JavaFileManager` interface on Java 9 and newer, without opening JDK implementation packages.
+* Compatibility: Java 8 returns empty module locations or a null module name when those APIs are absent. Delegate runtime exceptions and errors retain their identity; checked failures retain their cause.
+* Validation: `FileManagerModuleDispatchTest` checks system modules in a child JVM without module-opening flags and the Java 8 fallback. `MyJavaFileManagerTest` checks delegation and checked failures.
+
 === [RC-FN-001] Allow hyphenated descriptor class names
 
 * Date: 2025-10-28
