@@ -1,3 +1,11 @@
+=== [RC-TEST-003] Bound concurrent compiler qualification
+
+* Date: 2026-11-18
+* Context: `RuntimeCompileTest.testMultiThread` spun one worker per CPU and timed out after ten seconds on Mac agents, without joining the workers on failure.
+* Decision: Start the 64 concurrent requests required by JRC-TEST-015 behind blocking latches. Use a shared sixty-second compilation deadline, bounded startup and termination waits, and a ninety-second test limit.
+* Diagnostics: On timeout report completed requests and the owned workers' stacks. Cancel and join workers on every exit, preserving the primary failure, then close the compiler and class loader.
+* Scope: This qualifies shared compiler/class-loader correctness; it is not a compile-throughput benchmark and changes no production deadline.
+
 === [RC-FN-001] Allow hyphenated descriptor class names
 
 * Date: 2025-10-28
