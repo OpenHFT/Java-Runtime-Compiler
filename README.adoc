@@ -127,3 +127,34 @@ Class<?> clazz = CompilerUtils.CACHED_COMPILER.loadFromJava(className, src);
 
 * Fork -> feature branch -> PR; run `mvn spotless:apply` before pushing.
 ** All code under the _Apache License 2.0_ - see `LICENSE`.
+
+== Java runtime access requirements
+
+The following classpath profile is verified for this implementation's compile/load
+and file-manager paths. It is not a universal set of Chronicle JVM options.
+
+[cols="1,3",options="header"]
+|===
+|Java |Requirements
+|8 |A full JDK and compiler availability (tools.jar where required); no JPMS flags.
+|11 |The existing Unsafe override path works without extra module flags, including with illegal-access=deny.
+|17, 21, 25 |The tested compile/load path needs both options below.
+|===
+
+[source,text]
+----
+--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+--add-opens=java.base/java.lang=ALL-UNNAMED
+----
+
+A denied file-manager call names the compiler-file export; denied reflective
+class definition names the java.lang opening. Diagnostics include the runtime,
+declaring class/method and original cause. They appear only when that access
+actually fails. A missing compiler has a separate diagnostic: flags cannot add
+jdk.compiler to a runtime image that does not contain it.
+
+The older opening of jdk.compiler/com.sun.tools.javac does not replace the
+java.lang opening for ClassLoader.defineClass. Java 8 rejects JPMS options.
+Named-module deployments need their own target module names rather than
+ALL-UNNAMED. Other vendors, custom images and downstream integrations can have
+additional requirements; no Unsafe-warning suppression option is prescribed.
