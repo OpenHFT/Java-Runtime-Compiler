@@ -57,13 +57,7 @@ public enum CompilerUtils {
             theUnsafe.setAccessible(true);
             Unsafe u = (Unsafe) theUnsafe.get(null);
             DEFINE_CLASS_METHOD = ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class, int.class, int.class);
-            try {
-                Field f = AccessibleObject.class.getDeclaredField("override");
-                long offset = u.objectFieldOffset(f);
-                u.putBoolean(DEFINE_CLASS_METHOD, offset, true);
-            } catch (NoSuchFieldException e) {
-                DEFINE_CLASS_METHOD.setAccessible(true);
-            }
+            makeDefineClassAccessible(u);
         } catch (NoSuchMethodException | IllegalAccessException | NoSuchFieldException e) {
             throw new AssertionError(e);
         }
@@ -71,6 +65,27 @@ public enum CompilerUtils {
 
     static {
         reset();
+    }
+
+    // The Java 8 override field has no supported equivalent; newer JDKs use the reflective fallback.
+    @SuppressWarnings({"deprecation", "java:S1874"})
+    private static void makeDefineClassAccessible(Unsafe unsafe) {
+        try {
+            Field field = AccessibleObject.class.getDeclaredField("override");
+            unsafe.putBoolean(DEFINE_CLASS_METHOD, unsafe.objectFieldOffset(field), true);
+        } catch (NoSuchFieldException absent) {
+            makeDefineClassReflectivelyAccessible();
+        }
+    }
+
+    // Defining compiled classes in the caller's loader requires this access on supported JDKs.
+    @SuppressWarnings("java:S3011")
+    private static void makeDefineClassReflectivelyAccessible() {
+        try {
+            DEFINE_CLASS_METHOD.setAccessible(true);
+        } catch (RuntimeException inaccessible) {
+            throw RuntimeAccessDiagnostics.inaccessible(inaccessible, DEFINE_CLASS_METHOD, true);
+        }
     }
 
     private static boolean isDebug() {
@@ -92,7 +107,7 @@ public enum CompilerUtils {
                 Method create = javacTool.getMethod("create");
                 s_compiler = (JavaCompiler) create.invoke(null);
             } catch (Exception e) {
-                throw new AssertionError(e);
+                throw RuntimeAccessDiagnostics.missingCompiler(e);
             }
         }
     }
@@ -240,12 +255,9 @@ public enum CompilerUtils {
         if (len > Runtime.getRuntime().totalMemory() / 10)
             throw new IllegalStateException("Attempted to read large file " + file + " was " + len + " bytes.");
         byte[] bytes = new byte[(int) len];
-        DataInputStream dis = null;
-        try {
-            dis = new DataInputStream(new FileInputStream(file));
+        try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
             dis.readFully(bytes);
         } catch (IOException e) {
-            close(dis);
             LOGGER.warn("Unable to read {}", file, e);
             throw new IllegalStateException("Unable to read file " + file, e);
         }
@@ -313,12 +325,9 @@ public enum CompilerUtils {
             file.renameTo(bak);
         }
 
-        FileOutputStream fos = null;
-        try {
-            fos = new FileOutputStream(file);
+        try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(bytes);
         } catch (IOException e) {
-            close(fos);
             LOGGER.warn("Unable to write {} as {}", file, decodeUTF8(bytes), e);
             file.delete();
             if (bak != null)

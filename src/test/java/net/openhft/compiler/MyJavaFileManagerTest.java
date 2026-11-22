@@ -15,6 +15,7 @@ import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -22,9 +23,15 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
@@ -150,6 +157,69 @@ public class MyJavaFileManagerTest {
                 manager.inferModuleName(StandardLocation.CLASS_PATH);
             } catch (UnsupportedOperationException ignored) {
                 // Method not available on older JDKs; acceptable.
+            }
+        }
+    }
+
+    @Test
+    public void deniedCompilerModuleAccessNamesTheRequiredJvmOptions() throws Exception {
+        int version = RuntimeAccessDiagnostics.featureVersion(System.getProperty("java.specification.version"));
+        String withoutFlags = runModuleAccessProbe();
+        if (version == 8) {
+            assertTrue(withoutFlags, withoutFlags.contains("Unable to find method listLocationsForModules"));
+        } else if (version <= 11) {
+            assertTrue(withoutFlags, withoutFlags.contains("listed"));
+        } else {
+            assertTrue(withoutFlags, withoutFlags.contains("InaccessibleObjectException"));
+            assertTrue(withoutFlags, withoutFlags.contains(RuntimeAccessDiagnostics.FILE_MANAGER));
+            assertTrue(withoutFlags, withoutFlags.contains("Java " + version));
+            assertFalse(withoutFlags, withoutFlags.contains(RuntimeAccessDiagnostics.CLASS_LOADER));
+            String allowed = runModuleAccessProbe(RuntimeAccessDiagnostics.FILE_MANAGER);
+            assertFalse(allowed, allowed.contains("InaccessibleObjectException"));
+            assertTrue(allowed, allowed.contains("listed"));
+        }
+    }
+
+    /**
+     * Runs {@link ModuleAccessProbe} in a child JVM with only the given JVM options, since the test JVM
+     * itself is started with the jdk.compiler exports.
+     */
+    private static String runModuleAccessProbe(String... jvmOptions) throws Exception {
+        List<String> command = new ArrayList<>();
+        command.add(System.getProperty("java.home") + File.separator + "bin" + File.separator + "java");
+        command.addAll(Arrays.asList(jvmOptions));
+        command.add("-cp");
+        command.add(System.getProperty("java.class.path"));
+        command.add(ModuleAccessProbe.class.getName());
+        File log = File.createTempFile("module-access-probe", ".txt");
+        try {
+            ProcessBuilder builder = new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log);
+            builder.environment().remove("JAVA_TOOL_OPTIONS");
+            builder.environment().remove("JDK_JAVA_OPTIONS");
+            builder.environment().remove("_JAVA_OPTIONS");
+            Process process = builder.start();
+            boolean exited = process.waitFor(60, TimeUnit.SECONDS);
+            if (!exited)
+                process.destroyForcibly();
+            String output = new String(Files.readAllBytes(log.toPath()), StandardCharsets.UTF_8);
+            assertTrue("probe did not exit: " + output, exited);
+            return output;
+        } finally {
+            log.delete();
+        }
+    }
+
+    /**
+     * Lists module locations through {@link MyJavaFileManager} and prints the outcome.
+     */
+    public static final class ModuleAccessProbe {
+        public static void main(String[] args) throws IOException {
+            JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+            try (StandardJavaFileManager delegate = compiler.getStandardFileManager(null, null, null)) {
+                new MyJavaFileManager(delegate).listLocationsForModules(StandardLocation.locationFor("SYSTEM_MODULES"));
+                System.out.println("listed");
+            } catch (RuntimeException e) {
+                System.out.println(e);
             }
         }
     }
