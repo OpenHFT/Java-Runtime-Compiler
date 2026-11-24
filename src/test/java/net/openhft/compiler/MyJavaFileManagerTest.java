@@ -8,6 +8,7 @@ import org.junit.Test;
 import javax.tools.FileObject;
 import javax.tools.ForwardingJavaFileManager;
 import javax.tools.JavaCompiler;
+import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
 import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardJavaFileManager;
@@ -187,12 +188,13 @@ public class MyJavaFileManagerTest {
                         }
                     });
             MyJavaFileManager manager = new MyJavaFileManager(proxy);
-            if (resolveSystemModules() == null) {
+            JavaFileManager.Location systemModules = resolveSystemModules();
+            if (systemModules == null) {
                 assertFalse(manager.listLocationsForModules(StandardLocation.CLASS_PATH).iterator().hasNext());
                 return;
             }
             try {
-                manager.listLocationsForModules(resolveSystemModules());
+                manager.listLocationsForModules(systemModules);
                 fail("Expected invocation failure to be wrapped");
             } catch (UnsupportedOperationException expected) {
                 assertTrue(expected.getCause() instanceof IOException);
