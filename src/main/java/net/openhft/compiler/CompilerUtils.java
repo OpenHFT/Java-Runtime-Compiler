@@ -57,13 +57,7 @@ public enum CompilerUtils {
             theUnsafe.setAccessible(true);
             Unsafe u = (Unsafe) theUnsafe.get(null);
             DEFINE_CLASS_METHOD = ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class, int.class, int.class);
-            try {
-                Field f = AccessibleObject.class.getDeclaredField("override");
-                long offset = u.objectFieldOffset(f);
-                u.putBoolean(DEFINE_CLASS_METHOD, offset, true);
-            } catch (NoSuchFieldException e) {
-                DEFINE_CLASS_METHOD.setAccessible(true);
-            }
+            makeDefineClassAccessible(u);
         } catch (NoSuchMethodException | IllegalAccessException | NoSuchFieldException e) {
             throw new AssertionError(e);
         }
@@ -71,6 +65,19 @@ public enum CompilerUtils {
 
     static {
         reset();
+    }
+
+    // Java 8 has no supported API for defining a class in an existing class loader.
+    // Keep its Unsafe fallback until Java 8 support can be removed.
+    @SuppressWarnings("java:S1874")
+    private static void makeDefineClassAccessible(Unsafe u) {
+        try {
+            Field f = AccessibleObject.class.getDeclaredField("override");
+            long offset = u.objectFieldOffset(f);
+            u.putBoolean(DEFINE_CLASS_METHOD, offset, true);
+        } catch (NoSuchFieldException e) {
+            DEFINE_CLASS_METHOD.setAccessible(true);
+        }
     }
 
     private static boolean isDebug() {
