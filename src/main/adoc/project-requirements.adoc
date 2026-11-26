@@ -55,3 +55,12 @@ JRC-UX-025 :: Error diagnostics *SHOULD* surface compiler messages verbatim, gro
 === Compliance / Risk (RISK)
 
 JRC-RISK-026 :: A retention policy *MUST* restrict debug artefact directories to user-configurable paths.
+
+=== File stream ownership (FIX-292)
+
+`CompilerUtils.writeBytes` and `writeText` close the streams they open before
+returning, including when the existing content is unchanged. A failed write
+closes its output stream before attempting to restore the backup.
+`FileHandleReleaseTest` checks immediate rename on Windows and retained file
+descriptors through `/proc/self/fd` on Linux; rename alone does not detect a
+retained descriptor on systems that allow renaming open files.
